@@ -143,6 +143,7 @@ async function checkUblock(){
     }catch(e){resolve(false);}
   });
 }
+}
 
 // Edge設定推定
 async function checkEdgeSettings(){
@@ -382,4 +383,67 @@ async function runAll(){
     ext.innerHTML = rec.map(r=>`
       <div class="ext-item">
         <b>${r.name}</b><br>
-        ${
+        ${r.desc}<br>
+        <a href="${r.url}" target="_blank">→ 公式ストアで入手</a>
+      </div>
+    `).join("");
+  }
+
+  // 生テキストレポート
+  const report = {
+    https,
+    ua,
+    cpu,
+    ram,
+    misc,
+    webrtcIPs,
+    speed,
+    doh,
+    ublock,
+    edge,
+    cWebGL,
+    cCanvas,
+    audioFP,
+    storage,
+    apis,
+    ipv6,
+    proxy
+  };
+
+  const textLines = [];
+  textLines.push("=== Browser Security Report ===");
+  for(const [k,v] of Object.entries(report)){
+    textLines.push(k + ": " + JSON.stringify(v));
+  }
+
+  const adviceText = tips.length===0 ? "No major issues detected." : tips.map((t,i)=>`${i+1}. ${t}`).join("\n");
+  textLines.push("\n=== Advice ===");
+  textLines.push(adviceText);
+
+  const finalText = textLines.join("\n");
+  raw.textContent = finalText;
+  lastReportText = finalText;
+}
+
+// ダウンロード
+function downloadReport(){
+  if(!lastReportText){
+    alert("先に「すべて診断する」を押してください。");
+    return;
+  }
+  const blob = new Blob([lastReportText], {type:"text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const ts = new Date().toISOString().replace(/[:.]/g,"-");
+  a.href = url;
+  a.download = "browser-security-report-" + ts + ".txt";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+</script>
+
+</div>
+</body>
+</html>
