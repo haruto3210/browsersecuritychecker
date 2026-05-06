@@ -423,7 +423,7 @@ async function runAll(){
   const finalText = textLines.join("\n");
   raw.textContent = finalText;
   lastReportText = finalText;
-}
+}  // ← runAll() の正しい閉じカッコ（ここで終わり）
 
 // ダウンロード
 function downloadReport(){
@@ -447,3 +447,4 @@ function downloadReport(){
 </div>
 </body>
 </html>
+
