@@ -36,7 +36,6 @@
     color:#000; font-weight:600; cursor:pointer; margin-top:8px; margin-right:8px;
   }
   .result { margin-top:10px; font-size:.9rem; }
-  ul { margin:6px 0 0 18px; font-size:.85rem; color:var(--muted); }
   pre {
     white-space:pre-wrap;
     word-break:break-all;
@@ -45,6 +44,14 @@
     padding:8px;
     border-radius:6px;
   }
+  .ext-item {
+    margin:6px 0;
+    padding:8px;
+    background:rgba(255,255,255,.05);
+    border-radius:6px;
+    border:1px solid rgba(255,255,255,.1);
+  }
+  .ext-item a { color:#4fc3f7; text-decoration:none; }
 </style>
 </head>
 <body>
@@ -57,16 +64,21 @@
   <button onclick="runAll()">すべて診断する</button>
   <button onclick="downloadReport()">結果をテキストでダウンロード</button>
   <div id="result" class="result"></div>
+
   <h2>改善ポイント（自動コメント）</h2>
   <div id="advice" class="result"></div>
+
+  <h2>推奨セキュリティ拡張機能（自動判定）</h2>
+  <div id="extensions" class="result"></div>
+
   <h2>生データ（テキスト）</h2>
   <pre id="raw"></pre>
 </div>
 
 <script>
 let lastReportText = "";
-let lastAdviceText = "";
 
+// バッジ生成
 function badge(text,type){return `<span class="badge ${type}">${text}</span>`;}
 
 // WebRTCリーク
@@ -132,7 +144,7 @@ async function checkUblock(){
   });
 }
 
-// Edge設定推定（Cookie挙動）
+// Edge設定推定
 async function checkEdgeSettings(){
   let cookieTest="unknown";
   try{
@@ -220,7 +232,7 @@ async function checkIPv6(){
   }catch(e){return false;}
 }
 
-// Proxy推定（relay candidate）
+// Proxy推定
 async function checkProxy(){
   return new Promise(resolve=>{
     try{
@@ -240,15 +252,13 @@ async function checkProxy(){
   });
 }
 
-// その他ブラウザ情報
+// Misc
 function checkMisc(){
   return {
     lang: navigator.language,
-    langs: navigator.languages ? navigator.languages.join(", ") : "",
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "不明",
     screen: `${screen.width}x${screen.height} (${window.devicePixelRatio}x)`,
     secureContext: window.isSecureContext,
-    jsEnabled: true,
     sw: "serviceWorker" in navigator
   };
 }
@@ -257,9 +267,12 @@ function checkMisc(){
 async function runAll(){
   const out=document.getElementById("result");
   const advice=document.getElementById("advice");
+  const ext=document.getElementById("extensions");
   const raw=document.getElementById("raw");
+
   out.innerHTML="診断中…";
   advice.innerHTML="";
+  ext.innerHTML="";
   raw.textContent="";
 
   const ua=navigator.userAgent;
@@ -286,109 +299,87 @@ async function runAll(){
     checkProxy()
   ]);
 
+  // 表示
   let html="";
   html+=https?badge("HTTPS: OK","ok"):badge("HTTPS: 非HTTPS","warn");
   html+=badge("UA: "+ua,"mid");
-  html+=badge("CPUスレッド: "+cpu,"mid");
+  html+=badge("CPU: "+cpu,"mid");
   html+=badge("RAM: "+ram+"GB","mid");
   html+=badge("言語: "+misc.lang,"mid");
-  html+=badge("タイムゾーン: "+misc.tz,"mid");
+  html+=badge("TZ: "+misc.tz,"mid");
   html+=badge("画面: "+misc.screen,"mid");
   html+=badge("SecureContext: "+(misc.secureContext?"YES":"NO"), misc.secureContext?"ok":"warn");
-  html+=badge("JS: 有効","ok");
-  html+=badge("ServiceWorker: "+(misc.sw?"対応":"未対応"),"mid");
+  html+=badge("SW: "+(misc.sw?"YES":"NO"),"mid");
   html+=badge("WebRTC IP: "+webrtcIPs.join(", ") ,"mid");
-  html+=badge("通信速度: "+(speed?speed+" Mbps":"測定不可"), speed && speed>30?"ok":"mid");
-  html+=badge("DoH推定: "+(doh?"有効の可能性高い":"無効の可能性"), doh?"ok":"mid");
-  html+=badge("uBlock判定: "+(ublock?"動作中の可能性高い":"無効/例外の可能性"), ublock?"ok":"warn");
-  html+=badge("Cookie挙動: "+(edge==="allow"?"許可":"制限"), "mid");
+  html+=badge("速度: "+(speed?speed+" Mbps":"測定不可"), speed && speed>30?"ok":"mid");
+  html+=badge("DoH: "+(doh?"有効":"無効"), doh?"ok":"mid");
+  html+=badge("uBlock: "+(ublock?"動作中":"無効/例外"), ublock?"ok":"warn");
+  html+=badge("Cookie挙動: "+edge,"mid");
   html+=badge("WebGL FP: "+cWebGL.fp,"mid");
-  html+=badge("GPU Vendor: "+cWebGL.vendor,"mid");
-  html+=badge("GPU Renderer: "+cWebGL.renderer,"mid");
+  html+=badge("GPU: "+cWebGL.vendor+" / "+cWebGL.renderer,"mid");
   html+=badge("Canvas FP: "+cCanvas,"mid");
   html+=badge("Audio FP: "+audioFP,"mid");
   html+=badge("LocalStorage: "+(storage.ls?"OK":"NG"), storage.ls?"ok":"warn");
   html+=badge("SessionStorage: "+(storage.ss?"OK":"NG"), storage.ss?"ok":"warn");
-  html+=badge("Notification API: "+(apis.notif?"利用可":"不可"), "mid");
-  html+=badge("Clipboard API: "+(apis.clip?"利用可":"不可"), "mid");
-  html+=badge("IPv6: "+(ipv6?"到達可能の可能性":"不明/不可"), "mid");
-  html+=badge("Proxy/VPN推定: "+(proxy?"利用中の可能性":"不明/なしの可能性"), "mid");
+  html+=badge("Notification: "+(apis.notif?"OK":"NG"),"mid");
+  html+=badge("Clipboard: "+(apis.clip?"OK":"NG"),"mid");
+  html+=badge("IPv6: "+(ipv6?"到達":"不可"),"mid");
+  html+=badge("Proxy推定: "+(proxy?"VPN/Proxyの可能性":"なし"),"mid");
 
   out.innerHTML=html;
 
   // 改善ポイント
   const tips=[];
-  if(!https) tips.push("この診断ページを本番運用するなら HTTPS（例: GitHub Pages）で公開するとより正確な診断になる。");
-  if(!doh) tips.push("Edge のセキュア DNS を Cloudflare(1.1.1.1) などに設定すると、DNS レベルの保護と速度が向上する。");
-  if(!ublock) tips.push("uBlock Origin が無効か例外になっている可能性があるので、拡張機能と「信頼するサイト」を確認するとよい。");
-  if(speed && speed<20) tips.push("通信速度がやや遅めなので、大容量ダウンロードやゲーム時は有線接続や別回線も検討できる。");
-  if(!ipv6) tips.push("IPv6 が使えない環境の場合、一部のサービスで最適な経路にならないことがある（必須ではない）。");
-  if(!storage.ls || !storage.ss) tips.push("LocalStorage / SessionStorage が無効だと、一部サイトのログインや設定保存が動かない可能性がある。");
-  if(!misc.secureContext) tips.push("SecureContext ではないため、一部のセキュアAPIが制限される。HTTPS 環境での利用を推奨。");
+  if(!https) tips.push("HTTPS で開くと SecureContext が有効になり、診断精度が上がる。");
+  if(!doh) tips.push("セキュアDNS（1.1.1.1 など）を設定すると安全性と速度が向上する。");
+  if(!ublock) tips.push("uBlock Origin が無効の可能性。拡張機能設定を確認するとよい。");
+  if(speed && speed<20) tips.push("通信速度が遅め。Wi-Fi なら 5GHz や有線接続を検討できる。");
+  if(!ipv6) tips.push("IPv6 が無効。必須ではないが、対応すると経路が最適化される場合がある。");
+  if(!storage.ls || !storage.ss) tips.push("Storage が無効だとログイン保持が壊れる可能性がある。");
 
-  if(tips.length===0){
-    advice.innerHTML="<span class='badge ok'>大きな改善ポイントは特に見当たらない。かなり整った環境。</span>";
+  advice.innerHTML = tips.length===0
+    ? "<span class='badge ok'>大きな問題なし。非常に良い状態。</span>"
+    : "<ul>"+tips.map(t=>"<li>"+t+"</li>").join("")+"</ul>";
+
+  // 拡張機能レコメンド
+  const rec=[];
+
+  if(!ublock){
+    rec.push({
+      name:"uBlock Origin",
+      desc:"広告・追跡・詐欺サイトを強力にブロック",
+      url:"https://microsoftedge.microsoft.com/addons/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm"
+    });
+  }
+
+  if(!doh){
+    rec.push({
+      name:"Malwarebytes Browser Guard",
+      desc:"フィッシング・マルウェアサイトを自動ブロック",
+      url:"https://microsoftedge.microsoft.com/addons/detail/malwarebytes-browser-guar/ihcjicgdanjaechkgeegckofjjedodee"
+    });
+  }
+
+  if(webrtcIPs.length>1){
+    rec.push({
+      name:"WebRTC Leak Prevent",
+      desc:"WebRTC による IP 漏洩を防止",
+      url:"https://microsoftedge.microsoft.com/addons/detail/webrtc-leak-prevent/ejjicmeblgpmajnghnpcppodonldlgfn"
+    });
+  }
+
+  if(!apis.clip){
+    rec.push({
+      name:"Bitwarden",
+      desc:"安全なパスワード管理",
+      url:"https://microsoftedge.microsoft.com/addons/detail/bitwarden-free-password-m/nngceckbapebfimnlniiiahkandclblb"
+    });
+  }
+
+  if(rec.length===0){
+    ext.innerHTML="<span class='badge ok'>追加で必要な拡張機能は特にありません。</span>";
   }else{
-    advice.innerHTML="<ul>"+tips.map(t=>"<li>"+t+"</li>").join("")+"</ul>";
-  }
-
-  // 生テキストレポート
-  const report = {
-    https,
-    ua,
-    cpu,
-    ram,
-    lang: misc.lang,
-    timezone: misc.tz,
-    screen: misc.screen,
-    secureContext: misc.secureContext,
-    serviceWorker: misc.sw,
-    webrtcIPs,
-    speedMbps: speed,
-    doh,
-    ublock,
-    cookieBehavior: edge,
-    webglFP: cWebGL,
-    canvasFP: cCanvas,
-    audioFP,
-    storage,
-    apis,
-    ipv6,
-    proxy
-  };
-  const textLines = [];
-  textLines.push("=== Browser Security Report ===");
-  for(const [k,v] of Object.entries(report)){
-    textLines.push(k + ": " + JSON.stringify(v));
-  }
-  const adviceText = tips.length===0 ? "No major issues detected." : tips.map((t,i)=>`${i+1}. ${t}`).join("\n");
-  textLines.push("\n=== Advice ===");
-  textLines.push(adviceText);
-
-  const finalText = textLines.join("\n");
-  raw.textContent = finalText;
-  lastReportText = finalText;
-  lastAdviceText = adviceText;
-}
-
-function downloadReport(){
-  if(!lastReportText){
-    alert("先に「すべて診断する」を押してください。");
-    return;
-  }
-  const blob = new Blob([lastReportText], {type:"text/plain"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const ts = new Date().toISOString().replace(/[:.]/g,"-");
-  a.href = url;
-  a.download = "browser-security-report-" + ts + ".txt";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-</script>
-
-</div>
-</body>
-</html>
+    ext.innerHTML = rec.map(r=>`
+      <div class="ext-item">
+        <b>${r.name}</b><br>
+        ${
