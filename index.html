@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ブラウザ セキュリティ診断 PRO</title>
+<title>ブラウザ セキュリティ診断 PRO+</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root {
@@ -15,7 +15,7 @@
     background:#050608; color:var(--text);
     font-family:system-ui,sans-serif;
   }
-  .wrap { max-width:900px; margin:0 auto; }
+  .wrap { max-width:960px; margin:0 auto; }
   h1 { font-size:1.6rem; margin-bottom:8px; }
   h2 { font-size:1.1rem; margin:18px 0 8px; border-left:4px solid #4fc3f7; padding-left:8px; }
   .panel {
@@ -25,7 +25,7 @@
   }
   .badge {
     display:inline-block; padding:4px 8px; border-radius:999px;
-    margin:4px; font-size:.85rem; border:1px solid rgba(255,255,255,.1);
+    margin:4px; font-size:.8rem; border:1px solid rgba(255,255,255,.1);
   }
   .ok{color:var(--ok);border-color:var(--ok);}
   .warn{color:var(--warn);border-color:var(--warn);}
@@ -36,52 +36,55 @@
     color:#000; font-weight:600; cursor:pointer; margin-top:8px;
   }
   .result { margin-top:10px; font-size:.9rem; }
+  ul { margin:6px 0 0 18px; font-size:.85rem; color:var(--muted); }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<h1>ブラウザ セキュリティ診断 PRO</h1>
+<h1>ブラウザ セキュリティ診断 PRO+</h1>
 
 <div class="panel">
   <h2>自動診断</h2>
   <button onclick="runAll()">すべて診断する</button>
   <div id="result" class="result"></div>
+  <h2>改善ポイント（自動コメント）</h2>
+  <div id="advice" class="result"></div>
 </div>
 
 <script>
-// バッジ生成
-function badge(text, type){ return `<span class="badge ${type}">${text}</span>`; }
+function badge(text,type){return `<span class="badge ${type}">${text}</span>`;}
 
-// WebRTCリークチェック
+// WebRTCリーク
 async function checkWebRTC(){
   return new Promise(resolve=>{
-    const pc=new RTCPeerConnection({iceServers:[]});
-    pc.createDataChannel("x");
-    pc.createOffer().then(o=>pc.setLocalDescription(o));
-    pc.onicecandidate=e=>{
-      if(!e||!e.candidate){
-        resolve({local:"取得不可",public:"取得不可"});
-        return;
-      }
-      const ip=e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
-      if(ip) resolve({local:ip[0],public:"推定不可"});
-      pc.close();
-    };
+    try{
+      const pc=new RTCPeerConnection({iceServers:[]});
+      pc.createDataChannel("x");
+      pc.createOffer().then(o=>pc.setLocalDescription(o));
+      const ips=new Set();
+      pc.onicecandidate=e=>{
+        if(!e||!e.candidate){
+          pc.close();
+          resolve(Array.from(ips));
+          return;
+        }
+        const m=e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
+        if(m) ips.add(m[0]);
+      };
+    }catch(e){resolve(["取得不可"]); }
   });
 }
 
-// 通信速度（実測）
+// 通信速度
 async function checkSpeed(){
   const start=performance.now();
   try{
     await fetch("https://speed.cloudflare.com/__down?bytes=1000000",{cache:"no-store"});
     const sec=(performance.now()-start)/1000;
     const mbps=(1/sec).toFixed(2);
-    return mbps+" Mbps（簡易）";
-  }catch(e){
-    return "測定不可";
-  }
+    return mbps;
+  }catch(e){return null;}
 }
 
 // DoH推定
@@ -91,71 +94,203 @@ async function checkDoH(){
       method:"GET",
       headers:{ "accept":"application/dns-json" }
     });
-    if(r.ok) return "DoH 有効の可能性高い";
-    return "DoH 無効の可能性";
-  }catch(e){
-    return "DoH 無効の可能性";
-  }
+    return r.ok;
+  }catch(e){return false;}
 }
 
 // uBlock間接判定
 async function checkUblock(){
   return new Promise(resolve=>{
-    const iframe=document.createElement("iframe");
-    iframe.style.display="none";
-    iframe.src="https://ads.example.com/banner.js"; // 広告っぽいURL
-    document.body.appendChild(iframe);
-
-    setTimeout(()=>{
-      if(!iframe.contentWindow || iframe.contentWindow.length===0){
-        resolve("uBlock Origin が動作している可能性が高い");
-      }else{
-        resolve("uBlock が無効 or 例外設定の可能性");
-      }
-      iframe.remove();
-    },800);
+    try{
+      const iframe=document.createElement("iframe");
+      iframe.style.display="none";
+      iframe.src="https://ads.example.com/banner.js";
+      document.body.appendChild(iframe);
+      setTimeout(()=>{
+        if(!iframe.contentWindow || iframe.contentWindow.length===0){
+          resolve(true);
+        }else{
+          resolve(false);
+        }
+        iframe.remove();
+      },800);
+    }catch(e){resolve(false);}
   });
 }
 
-// Edge設定推定
+// Edge設定推定（Cookie挙動）
 async function checkEdgeSettings(){
-  let cookieTest="不明";
+  let cookieTest="unknown";
   try{
-    document.cookie="test=1; SameSite=None; Secure";
-    cookieTest=document.cookie.includes("test=")?"Cookie許可":"Cookie制限あり";
-  }catch(e){
-    cookieTest="Cookie制限あり";
-  }
+    document.cookie="__test_cookie=1; SameSite=None; Secure";
+    cookieTest=document.cookie.includes("__test_cookie=")?"allow":"restrict";
+  }catch(e){cookieTest="restrict";}
   return cookieTest;
+}
+
+// WebGL Fingerprint + GPU詳細
+function checkWebGL(){
+  try{
+    const canvas=document.createElement("canvas");
+    const gl=canvas.getContext("webgl")||canvas.getContext("experimental-webgl");
+    if(!gl) return {fp:"なし",vendor:"取得不可",renderer:"取得不可"};
+    const ext=gl.getExtension("WEBGL_debug_renderer_info");
+    const vendor=ext?gl.getParameter(ext.UNMASKED_VENDOR_WEBGL):"不明";
+    const renderer=ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):"不明";
+    const data=gl.getSupportedExtensions().join(",");
+    let hash=0;
+    for(let i=0;i<data.length;i++){hash=((hash<<5)-hash)+data.charCodeAt(i);hash|=0;}
+    return {fp:String(hash),vendor,renderer};
+  }catch(e){
+    return {fp:"エラー",vendor:"取得不可",renderer:"取得不可"};
+  }
+}
+
+// Canvas Fingerprint
+function checkCanvasFP(){
+  try{
+    const c=document.createElement("canvas");
+    c.width=200;c.height=50;
+    const ctx=c.getContext("2d");
+    ctx.textBaseline="top";
+    ctx.font="16px 'Arial'";
+    ctx.fillStyle="#f60";
+    ctx.fillRect(0,0,200,50);
+    ctx.fillStyle="#069";
+    ctx.fillText("fingerprint-test-晴人",2,2);
+    const data=c.toDataURL();
+    let hash=0;
+    for(let i=0;i<data.length;i++){hash=((hash<<5)-hash)+data.charCodeAt(i);hash|=0;}
+    return String(hash);
+  }catch(e){return "エラー";}
+}
+
+// Audio Fingerprint
+async function checkAudioFP(){
+  try{
+    const ctx=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(1,44100,44100);
+    const osc=ctx.createOscillator();
+    const comp=ctx.createDynamicsCompressor();
+    osc.connect(comp);comp.connect(ctx.destination);
+    osc.start(0);
+    const buf=await ctx.startRendering();
+    let sum=0;
+    const ch=buf.getChannelData(0);
+    for(let i=0;i<ch.length;i+=100){sum+=Math.abs(ch[i]);}
+    return String(sum.toFixed(4));
+  }catch(e){return "エラー";}
+}
+
+// LocalStorage / SessionStorage
+function checkStorage(){
+  let ls=false,ss=false;
+  try{localStorage.setItem("__t","1");ls=true;localStorage.removeItem("__t");}catch(e){}
+  try{sessionStorage.setItem("__t","1");ss=true;sessionStorage.removeItem("__t");}catch(e){}
+  return {ls,ss};
+}
+
+// Notification / Clipboard
+function checkAPIs(){
+  const notif=("Notification" in window);
+  const clip=!!(navigator.clipboard && navigator.clipboard.writeText);
+  return {notif,clip};
+}
+
+// IPv6推定（簡易）
+async function checkIPv6(){
+  try{
+    const r=await fetch("https://[2606:4700:4700::1111]/", {mode:"no-cors"});
+    return true;
+  }catch(e){return false;}
+}
+
+// Proxy推定（かなりラフ）
+async function checkProxy(){
+  // WebRTC candidate type relay があればプロキシ/VPNの可能性
+  return new Promise(resolve=>{
+    try{
+      const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+      pc.createDataChannel("x");
+      pc.createOffer().then(o=>pc.setLocalDescription(o));
+      let relay=false;
+      pc.onicecandidate=e=>{
+        if(!e||!e.candidate){
+          pc.close();
+          resolve(relay);
+          return;
+        }
+        if(e.candidate.candidate.includes(" typ relay ")) relay=true;
+      };
+    }catch(e){resolve(false);}
+  });
 }
 
 // 総合診断
 async function runAll(){
   const out=document.getElementById("result");
+  const advice=document.getElementById("advice");
   out.innerHTML="診断中…";
-
-  const webrtc=await checkWebRTC();
-  const speed=await checkSpeed();
-  const doh=await checkDoH();
-  const ublock=await checkUblock();
-  const edge=await checkEdgeSettings();
+  advice.innerHTML="";
 
   const ua=navigator.userAgent;
   const https=location.protocol==="https:";
   const cpu=navigator.hardwareConcurrency;
   const ram=navigator.deviceMemory||"不明";
 
-  out.innerHTML=`
-    ${https?badge("HTTPS: OK","ok"):badge("HTTPS: 非HTTPS","warn")}
-    ${badge("UA: "+ua,"mid")}
-    ${badge("CPUスレッド: "+cpu,"mid")}
-    ${badge("RAM: "+ram+"GB","mid")}
-    ${badge("WebRTC Local IP: "+webrtc.local,"mid")}
-    ${badge("通信速度: "+speed,"mid")}
-    ${badge("DoH推定: "+doh,"mid")}
-    ${badge("uBlock判定: "+ublock,"mid")}
-    ${badge("Edge設定推定: "+edge,"mid")}
-  `;
+  const [webrtcIPs,speed,doh,ublock,edge,cWebGL,cCanvas,audioFP,storage,apis,ipv6,proxy] =
+    await Promise.all([
+      checkWebRTC(),
+      checkSpeed(),
+      checkDoH(),
+      checkUblock(),
+      checkEdgeSettings(),
+      Promise.resolve(checkWebGL()),
+      Promise.resolve(checkCanvasFP()),
+      checkAudioFP(),
+      Promise.resolve(checkStorage()),
+      Promise.resolve(checkAPIs()),
+      checkIPv6(),
+      checkProxy()
+    ]);
+
+  let html="";
+  html+=https?badge("HTTPS: OK","ok"):badge("HTTPS: 非HTTPS","warn");
+  html+=badge("UA: "+ua,"mid");
+  html+=badge("CPUスレッド: "+cpu,"mid");
+  html+=badge("RAM: "+ram+"GB","mid");
+  html+=badge("WebRTC IP: "+webrtcIPs.join(", ") ,"mid");
+  html+=badge("通信速度: "+(speed?speed+" Mbps":"測定不可"), speed && speed>30?"ok":"mid");
+  html+=badge("DoH推定: "+(doh?"有効の可能性高い":"無効の可能性"), doh?"ok":"mid");
+  html+=badge("uBlock判定: "+(ublock?"動作中の可能性高い":"無効/例外の可能性"), ublock?"ok":"warn");
+  html+=badge("Cookie挙動: "+(edge==="allow"?"許可":"制限"), "mid");
+  html+=badge("WebGL FP: "+cWebGL.fp,"mid");
+  html+=badge("GPU Vendor: "+cWebGL.vendor,"mid");
+  html+=badge("GPU Renderer: "+cWebGL.renderer,"mid");
+  html+=badge("Canvas FP: "+cCanvas,"mid");
+  html+=badge("Audio FP: "+audioFP,"mid");
+  html+=badge("LocalStorage: "+(storage.ls?"OK":"NG"), storage.ls?"ok":"warn");
+  html+=badge("SessionStorage: "+(storage.ss?"OK":"NG"), storage.ss?"ok":"warn");
+  html+=badge("Notification API: "+(apis.notif?"利用可":"不可"), "mid");
+  html+=badge("Clipboard API: "+(apis.clip?"利用可":"不可"), "mid");
+  html+=badge("IPv6: "+(ipv6?"到達可能の可能性":"不明/不可"), "mid");
+  html+=badge("Proxy/VPN推定: "+(proxy?"利用中の可能性":"不明/なしの可能性"), "mid");
+
+  out.innerHTML=html;
+
+  // 改善ポイント自動コメント
+  const tips=[];
+  if(!https) tips.push("このページを本番運用するなら HTTPS（例: GitHub Pages）で公開するとより正確な診断になる。");
+  if(!doh) tips.push("Edge のセキュア DNS を Cloudflare(1.1.1.1) などに設定すると、DNS レベルの保護と速度が向上する。");
+  if(!ublock) tips.push("uBlock Origin が無効か例外になっている可能性があるので、拡張機能と「信頼するサイト」を確認するとよい。");
+  if(speed && speed<20) tips.push("通信速度がやや遅めなので、大容量ダウンロードやゲーム時は有線接続や別回線も検討できる。");
+  if(!ipv6) tips.push("IPv6 が使えない環境の場合、一部のサービスで最適な経路にならないことがある（必須ではない）。");
+  if(!storage.ls || !storage.ss) tips.push("LocalStorage / SessionStorage が無効だと、一部サイトのログインや設定保存が動かない可能性がある。");
+
+  if(tips.length===0){
+    advice.innerHTML="<span class='badge ok'>大きな改善ポイントは特に見当たらない。かなり整った環境。</span>";
+  }else{
+    advice.innerHTML="<ul>"+tips.map(t=>"<li>"+t+"</li>").join("")+"</ul>";
+  }
 }
 </script>
 
