@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>ブラウザ セキュリティ診断 ALL-IN-ONE PRO</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
   :root {
     color-scheme: dark;
@@ -74,6 +75,7 @@
   }
 </style>
 </head>
+
 <body>
 <div class="wrap">
 
@@ -130,6 +132,195 @@ function detectEnv(){
   document.getElementById("envChip").textContent=`環境: ${browser} / ${os}`;
 }
 detectEnv();
+/* ===========================
+   各種チェック関数（前半）
+=========================== */
+
+// WebRTC IP 取得
+async function checkWebRTC(){
+  return new Promise(resolve=>{
+    try{
+      const pc=new RTCPeerConnection({iceServers:[]});
+      pc.createDataChannel("x");
+      pc.createOffer().then(o=>pc.setLocalDescription(o));
+      const ips=new Set();
+      pc.onicecandidate=e=>{
+        if(!e||!e.candidate){
+          pc.close();
+          resolve(Array.from(ips));
+          return;
+        }
+        const m=e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
+        if(m) ips.add(m[0]);
+      };
+    }catch(e){resolve(["取得不可"]); }
+  });
+}
+
+// 通信速度
+async function checkSpeed(){
+  const start=performance.now();
+  try{
+    await fetch("https://speed.cloudflare.com/__down?bytes=1000000",{cache:"no-store"});
+    const sec=(performance.now()-start)/1000;
+    const mbps=(1/sec).toFixed(2);
+    return mbps;
+  }catch(e){return null;}
+}
+
+// DoH
+async function checkDoH(){
+  try{
+    const r=await fetch("https://cloudflare-dns.com/dns-query?name=example.com&type=A",{
+      method:"GET",
+      headers:{ "accept":"application/dns-json" }
+    });
+    return r.ok;
+  }catch(e){return false;}
+}
+
+// uBlock Origin 推定
+async function checkUblock(){
+  return new Promise(resolve=>{
+    try{
+      const iframe=document.createElement("iframe");
+      iframe.style.display="none";
+      iframe.src="https://ads.example.com/banner.js";
+      document.body.appendChild(iframe);
+      setTimeout(()=>{
+        if(!iframe.contentWindow || iframe.contentWindow.length===0){
+          resolve(true);
+        }else{
+          resolve(false);
+        }
+        iframe.remove();
+      },800);
+    }catch(e){resolve(false);}
+  });
+}
+
+// Cookie 挙動（Edge の SameSite 判定）
+async function checkEdgeSettings(){
+  let cookieTest="unknown";
+  try{
+    document.cookie="__test_cookie=1; SameSite=None; Secure";
+    cookieTest=document.cookie.includes("__test_cookie=")?"allow":"restrict";
+  }catch(e){cookieTest="restrict";}
+  return cookieTest;
+}
+
+/* ===========================
+   指紋系チェック
+=========================== */
+
+// WebGL 指紋
+function checkWebGL(){
+  try{
+    const canvas=document.createElement("canvas");
+    const gl=canvas.getContext("webgl")||canvas.getContext("experimental-webgl");
+    if(!gl) return {fp:"なし",vendor:"取得不可",renderer:"取得不可"};
+    const ext=gl.getExtension("WEBGL_debug_renderer_info");
+    const vendor=ext?gl.getParameter(ext.UNMASKED_VENDOR_WEBGL):"不明";
+    const renderer=ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):"不明";
+    const data=gl.getSupportedExtensions().join(",");
+    let hash=0;
+    for(let i=0;i<data.length;i++){hash=((hash<<5)-hash)+data.charCodeAt(i);hash|=0;}
+    return {fp:String(hash),vendor,renderer};
+  }catch(e){
+    return {fp:"エラー",vendor:"取得不可",renderer:"取得不可"};
+  }
+}
+
+// Canvas 指紋
+function checkCanvasFP(){
+  try{
+    const c=document.createElement("canvas");
+    c.width=200;c.height=50;
+    const ctx=c.getContext("2d");
+    ctx.textBaseline="top";
+    ctx.font="16px 'Arial'";
+    ctx.fillStyle="#f60";
+    ctx.fillRect(0,0,200,50);
+    ctx.fillStyle="#069";
+    ctx.fillText("fingerprint-test-ALL",2,2);
+    const data=c.toDataURL();
+    let hash=0;
+    for(let i=0;i<data.length;i++){hash=((hash<<5)-hash)+data.charCodeAt(i);hash|=0;}
+    return String(hash);
+  }catch(e){return "エラー";}
+}
+
+// Audio 指紋
+async function checkAudioFP(){
+  try{
+    const C = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if(!C) return "未対応";
+    const ctx=new C(1,44100,44100);
+    const osc=ctx.createOscillator();
+    const comp=ctx.createDynamicsCompressor();
+    osc.connect(comp);comp.connect(ctx.destination);
+    osc.start(0);
+    const buf=await ctx.startRendering();
+    let sum=0;
+    const ch=buf.getChannelData(0);
+    for(let i=0;i<ch.length;i+=100){sum+=Math.abs(ch[i]);}
+    return String(sum.toFixed(4));
+  }catch(e){return "エラー";}
+}
+
+/* ===========================
+   ストレージ / API / IPv6 / Proxy
+=========================== */
+
+function checkStorage(){
+  let ls=false,ss=false;
+  try{localStorage.setItem("__t","1");ls=true;localStorage.removeItem("__t");}catch(e){}
+  try{sessionStorage.setItem("__t","1");ss=true;sessionStorage.removeItem("__t");}catch(e){}
+  return {ls,ss};
+}
+
+function checkAPIs(){
+  const notif=("Notification" in window);
+  const clip=!!(navigator.clipboard && navigator.clipboard.writeText);
+  return {notif,clip};
+}
+
+async function checkIPv6(){
+  try{
+    await fetch("https://[2606:4700:4700::1111]/", {mode:"no-cors"});
+    return true;
+  }catch(e){return false;}
+}
+
+async function checkProxy(){
+  return new Promise(resolve=>{
+    try{
+      const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+      pc.createDataChannel("x");
+      pc.createOffer().then(o=>pc.setLocalDescription(o));
+      let relay=false;
+      pc.onicecandidate=e=>{
+        if(!e||!e.candidate){
+          pc.close();
+          resolve(relay);
+          return;
+        }
+        if(e.candidate.candidate.includes(" typ relay ")) relay=true;
+      };
+    }catch(e){resolve(false);}
+  });
+}
+
+// Misc 情報
+function checkMisc(){
+  return {
+    lang: navigator.language,
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "不明",
+    screen: `${screen.width}x${screen.height} (${window.devicePixelRatio}x)`,
+    secureContext: window.isSecureContext,
+    sw: "serviceWorker" in navigator
+  };
+}
 /* ===========================
    拡張機能リンク（Chrome / Edge / Firefox 自動切替）
 =========================== */
@@ -297,16 +488,63 @@ async function runAll(){
   bar.style.background = "#00e676";
   text.textContent = "診断完了";
 
-  /* --- ここから既存の結果生成ロジック（省略） --- */
-  /* 晴人の既存 runAll の後半部分をここに戻すだけでOK */
+  /* --- ここから結果生成（晴人の既存ロジックを統合） --- */
+
+  const ua=navigator.userAgent;
+  const https=location.protocol==="https:";
+  const cpu=navigator.hardwareConcurrency;
+  const ram=navigator.deviceMemory||"不明";
+  const misc=checkMisc();
+
+  const webrtcIPs = results["WebRTC チェック"];
+  const speed = results["通信速度"];
+  const doh = results["DoH"];
+  const ublock = results["uBlock 判定"];
+  const edge = results["Cookie 挙動"];
+  const cWebGL = results["WebGL 指紋"];
+  const cCanvas = results["Canvas 指紋"];
+  const audioFP = results["Audio 指紋"];
+  const storage = results["Storage"];
+  const apis = results["API 状態"];
+  const ipv6 = results["IPv6"];
+  const proxy = results["Proxy 推定"];
+
+  /* --- 表示（省略：晴人の既存コードをそのままここに入れる） --- */
+  /* あなたの元の index.html の結果表示部分をここに貼れば完成 */
+
+  /* --- レポート保存用テキスト生成 --- */
+  const report = {
+    env: envInfo,
+    https,
+    ua,
+    cpu,
+    ram,
+    misc,
+    webrtcIPs,
+    speedMbps: speed,
+    doh,
+    ublock,
+    edgeCookieBehavior: edge,
+    webglFP: cWebGL,
+    canvasFP: cCanvas,
+    audioFP,
+    storage,
+    apis,
+    ipv6,
+    proxy
+  };
+
+  const textLines = [];
+  textLines.push("=== Browser Security Report ===");
+  for(const [k,v] of Object.entries(report)){
+    textLines.push(k + ": " + JSON.stringify(v));
+  }
+
+  lastReportText = textLines.join("\n");
+  raw.textContent = lastReportText;
 
   /* --- 診断履歴保存 --- */
-  saveHistory({
-    speedMbps: results["通信速度"],
-    doh: results["DoH"],
-    ipv6: results["IPv6"],
-    proxy: results["Proxy 推定"]
-  });
+  saveHistory(report);
 
   /* --- レポートボタン表示 --- */
   document.getElementById("openReportBtn").style.display = "block";
