@@ -1,689 +1,212 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<title>ブラウザ セキュリティ診断 ALL-IN-ONE PRO</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#050608">
-
-<style>
-  :root {
-    color-scheme: dark;
-    --ok:#4caf50; --warn:#ef5350; --mid:#ffca28;
-    --bg:#050608; --panel:#11141f; --panel2:#181c29;
-    --text:#e0e0e0; --muted:#9e9e9e; --accent:#40c4ff;
-  }
-  body{
-    margin:0; padding:16px;
-    background:radial-gradient(circle at top,#1a237e 0,#050608 55%);
-    color:var(--text);
-    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  }
-  .wrap{max-width:1040px;margin:0 auto;}
-  header{
-    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
-    margin-bottom:16px;
-  }
-  .title-block h1{margin:0;font-size:1.7rem;}
-  .chip{
-    padding:4px 10px;border-radius:999px;
-    border:1px solid rgba(255,255,255,.18);
-    font-size:.75rem;color:var(--muted);
-  }
-  .panel{
-    background:linear-gradient(145deg,rgba(255,255,255,.04),rgba(0,0,0,.6));
-    border-radius:14px;
-    padding:14px;
-    border:1px solid rgba(255,255,255,.08);
-    box-shadow:0 18px 40px rgba(0,0,0,.6);
-    margin-bottom:16px;
-  }
-  button{
-    padding:8px 16px;border-radius:999px;border:none;
-    background:linear-gradient(135deg,#00e5ff,#00c853);
-    color:#000;font-weight:600;font-size:.85rem;
-    cursor:pointer;
-  }
-  button.secondary{
-    background:transparent;
-    color:var(--accent);
-    border:1px solid rgba(64,196,255,.6);
-  }
-  .progress-bg{
-    width:100%;height:12px;border-radius:6px;
-    background:rgba(255,255,255,.15);
-    margin-top:10px;
-  }
-  .progress-bar{
-    height:12px;border-radius:6px;
-    width:0%;
-    transition:width .25s cubic-bezier(.4,0,.2,1);
-  }
-  .progress-text{
-    margin-top:6px;font-size:.85rem;color:var(--muted);
-  }
-  .ext-item{
-    margin:6px 0;padding:8px;
-    background:var(--panel2);
-    border-radius:8px;
-    border:1px solid rgba(255,255,255,.12);
-  }
-  .history-item{
-    padding:8px;margin:6px 0;
-    background:rgba(255,255,255,.05);
-    border-radius:8px;
-    cursor:pointer;
-  }
-  a{
-    color:var(--accent);
-  }
-</style>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script>
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("service-worker.js").catch(()=>{});
-}
-</script>
-</head>
-
-<body>
-<div class="wrap">
-
-<header>
-  <div class="title-block">
-    <h1>ブラウザ セキュリティ診断 ALL-IN-ONE PRO</h1>
-  </div>
-  <div class="chip" id="envChip">環境: 解析中…</div>
-</header>
-
-<div class="panel">
-  <h2>自動診断</h2>
-  <button id="runBtn" onclick="runAll()">すべて診断する</button>
-  <button class="secondary" onclick="downloadReport()">レポート保存（ZIP）</button>
-
-  <div id="progressArea"></div>
-  <div id="result"></div>
-  <div id="advice"></div>
-  <div id="extensions"></div>
-
-  <button id="openReportBtn" style="display:none;margin-top:10px;" onclick="scrollToReport()">
-    診断レポートを開く
-  </button>
-</div>
-
-<div class="panel">
-  <h2>診断履歴</h2>
-  <div id="historyList">まだ履歴はありません。</div>
-</div>
-
-<div class="panel">
-  <h2>スコア推移</h2>
-  <canvas id="scoreChart" height="120"></canvas>
-</div>
-
-<div class="panel">
-  <h2>生データ</h2>
-  <pre id="raw">まだ診断は実行されていません。</pre>
-</div>
-
-<script>
-let lastReportText = "";
-let envInfo = {browser:"Unknown", os:"Unknown"};
-let scoreChart = null;
-
-function detectEnv(){
-  const ua = navigator.userAgent;
-  let browser="Unknown";
-  if(/Edg\//.test(ua)) browser="Edge";
-  else if(/Firefox\//.test(ua)) browser="Firefox";
-  else if(/Chrome\//.test(ua)) browser="Chrome";
-
-  let os="Unknown";
-  if(/Windows NT/.test(ua)) os="Windows";
-  else if(/Android/.test(ua)) os="Android";
-  else if(/Mac OS X/.test(ua)) os="macOS";
-  else if(/Linux/.test(ua)) os="Linux";
-
-  envInfo={browser,os};
-  document.getElementById("envChip").textContent=`環境: ${browser} / ${os}`;
-}
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>ブラウザ セキュリティ診断 ALL-IN-ONE PRO</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#050608"><style>:root{color-scheme:dark;--ok:#4caf50;--warn:#ef5350;--mid:#ffca28;--bg:#050608;--panel:#11141f;--panel2:#181c29;--text:#e0e0e0;--muted:#9e9e9e;--accent:#40c4ff}body{margin:0;padding:16px;background:radial-gradient(circle at top,#1a237e 0,#050608 55%);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1040px;margin:0 auto}header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:16px}.title-block h1{margin:0;font-size:1.7rem}.chip{padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:.75rem;color:var(--muted)}.panel{background:linear-gradient(145deg,rgba(255,255,255,.04),rgba(0,0,0,.6));border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,.08);box-shadow:0 18px 40px rgba(0,0,0,.6);margin-bottom:16px}button{padding:8px 16px;border-radius:999px;border:none;background:linear-gradient(135deg,#00e5ff,#00c853);color:#000;font-weight:600;font-size:.85rem;cursor:pointer}button.secondary{background:transparent;color:var(--accent);border:1px solid rgba(64,196,255,.6)}.progress-bg{width:100%;height:12px;border-radius:6px;background:rgba(255,255,255,.15);margin-top:10px}.progress-bar{height:12px;border-radius:6px;width:0%;transition:width .25s cubic-bezier(.4,0,.2,1)}.progress-text{margin-top:6px;font-size:.85rem;color:var(--muted)}.ext-item{margin:6px 0;padding:8px;background:var(--panel2);border-radius:8px;border:1px solid rgba(255,255,255,.12)}.history-item{padding:8px;margin:6px 0;background:rgba(255,255,255,.05);border-radius:8px;cursor:pointer}a{color:var(--accent)}</style><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script><script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js").catch(()=>{});}</script></head><body><div class="wrap"><header><div class="title-block"><h1>ブラウザ セキュリティ診断 ALL-IN-ONE PRO</h1></div><div class="chip" id="envChip">環境: 解析中…</div></header><div class="panel"><h2>自動診断</h2><button id="runBtn" onclick="runAll()">すべて診断する</button><button class="secondary" onclick="downloadReport()">レポート保存（ZIP）</button><div id="progressArea"></div><div id="result"></div><div id="advice"></div><div id="extensions"></div><button id="openReportBtn" style="display:none;margin-top:10px;" onclick="scrollToReport()">診断レポートを開く</button></div><div class="panel"><h2>診断履歴</h2><div id="historyList">まだ履歴はありません。</div></div><div class="panel"><h2>スコア推移</h2><canvas id="scoreChart" height="120"></canvas></div><div class="panel"><h2>生データ</h2><pre id="raw">まだ診断は実行されていません。</pre></div><script>
+let lastReportText="",envInfo={browser:"Unknown",os:"Unknown"},scoreChart=null;
+function detectEnv(){const ua=navigator.userAgent;let b="Chrome";if(ua.includes("Edg/"))b="Edge";else if(ua.includes("Firefox/"))b="Firefox";let os="Unknown";if(/Windows NT/.test(ua))os="Windows";else if(/Android/.test(ua))os="Android";else if(/Mac OS X/.test(ua))os="macOS";else if(/Linux/.test(ua))os="Linux";envInfo={browser:b,os};document.getElementById("envChip").textContent=`環境: ${b} / ${os}`;}
 detectEnv();
 
-/* ===========================
-   各種チェック関数
-=========================== */
+/* ===== チェック関数 ===== */
+async function checkWebRTC(){return new Promise(r=>{try{const pc=new RTCPeerConnection({iceServers:[]});pc.createDataChannel("x");pc.createOffer().then(o=>pc.setLocalDescription(o));const ips=new Set;pc.onicecandidate=e=>{if(!e||!e.candidate){pc.close();r([...ips]);return}const m=e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);if(m)ips.add(m[0])}}catch(e){r(["取得不可"])}});}
+async function checkSpeed(){const s=performance.now();try{await fetch("https://speed.cloudflare.com/__down?bytes=1000000",{cache:"no-store"});return+(1/((performance.now()-s)/1000)).toFixed(2)}catch(e){return null}}
+async function checkDoH(){try{return(await fetch("https://cloudflare-dns.com/dns-query?name=example.com&type=A",{headers:{"accept":"application/dns-json"}})).ok}catch(e){return false}}
+async function checkUblock(){return new Promise(r=>{try{const f=document.createElement("iframe");f.style.display="none";f.src="https://ads.example.com/banner.js";document.body.appendChild(f);setTimeout(()=>{r(!f.contentWindow||f.contentWindow.length===0);f.remove()},800)}catch(e){r(false)}})}
+async function checkEdgeSettings(){try{document.cookie="__test_cookie=1; SameSite=None; Secure";return document.cookie.includes("__test_cookie=")?"allow":"restrict"}catch(e){return"restrict"}}
+function checkWebGL(){try{const c=document.createElement("canvas"),g=c.getContext("webgl")||c.getContext("experimental-webgl");if(!g)return{fp:"なし",vendor:"取得不可",renderer:"取得不可"};const e=g.getExtension("WEBGL_debug_renderer_info"),v=e?g.getParameter(e.UNMASKED_VENDOR_WEBGL):"不明",r=e?g.getParameter(e.UNMASKED_RENDERER_WEBGL):"不明",d=g.getSupportedExtensions().join(","),h=[...d].reduce((a,b)=>(a=((a<<5)-a)+b.charCodeAt(0),a|0),0);return{fp:String(h),vendor:v,renderer:r}}catch(e){return{fp:"エラー",vendor:"取得不可",renderer:"取得不可"}}}
+function checkCanvasFP(){try{const c=document.createElement("canvas");c.width=200;c.height=50;const x=c.getContext("2d");x.textBaseline="top";x.font="16px Arial";x.fillStyle="#f60";x.fillRect(0,0,200,50);x.fillStyle="#069";x.fillText("fingerprint-test-ALL",2,2);const d=c.toDataURL();return String([...d].reduce((a,b)=>(a=((a<<5)-a)+b.charCodeAt(0),a|0),0))}catch(e){return"エラー"}}
+async function checkAudioFP(){try{const C=window.OfflineAudioContext||window.webkitOfflineAudioContext;if(!C)return"未対応";const c=new C(1,44100,44100),o=c.createOscillator(),m=c.createDynamicsCompressor();o.connect(m);m.connect(c.destination);o.start(0);const b=await c.startRendering();let s=0;const ch=b.getChannelData(0);for(let i=0;i<ch.length;i+=100)s+=Math.abs(ch[i]);return String(s.toFixed(4))}catch(e){return"エラー"}}
+function checkStorage(){let l=false,s=false;try{localStorage.setItem("__t","1");l=true;localStorage.removeItem("__t")}catch(e){}try{sessionStorage.setItem("__t","1");s=true;sessionStorage.removeItem("__t")}catch(e){}return{ls:l,ss:s}}
+function checkAPIs(){return{notif:"Notification"in window,clip:!!(navigator.clipboard&&navigator.clipboard.writeText)}}
+async function checkIPv6(){try{await fetch("https://[2606:4700:4700::1111]/",{mode:"no-cors"});return true}catch(e){return false}}
+async function checkProxy(){return new Promise(r=>{try{const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});pc.createDataChannel("x");pc.createOffer().then(o=>pc.setLocalDescription(o));let relay=false;pc.onicecandidate=e=>{if(!e||!e.candidate){pc.close();r(relay);return}if(e.candidate.candidate.includes(" typ relay "))relay=true}}catch(e){r(false)}})}
+function checkMisc(){return{lang:navigator.language,tz:Intl.DateTimeFormat().resolvedOptions().timeZone||"不明",screen:`${screen.width}x${screen.height} (${devicePixelRatio}x)`,secureContext:isSecureContext,sw:"serviceWorker"in navigator}}
 
-async function checkWebRTC(){
-  return new Promise(resolve=>{
-    try{
-      const pc=new RTCPeerConnection({iceServers:[]});
-      pc.createDataChannel("x");
-      pc.createOffer().then(o=>pc.setLocalDescription(o));
-      const ips=new Set();
-      pc.onicecandidate=e=>{
-        if(!e||!e.candidate){
-          pc.close();
-          resolve(Array.from(ips));
-          return;
-        }
-        const m=e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
-        if(m) ips.add(m[0]);
-      };
-    }catch(e){resolve(["取得不可"]); }
-  });
-}
+/* ===== Chrome Web Store 統一 ===== */
+function getExtensionLinks(){return{
+ublock:"https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm",
+mbg:"https://chrome.google.com/webstore/detail/malwarebytes-browser-guar/ihcjicgdanjaechkgeegckofjjedodee",
+webrtc:"https://chrome.google.com/webstore/detail/webrtc-control/fjkmabmdepjfammlpliljpnbhleegehm",
+bitwarden:"https://chrome.google.com/webstore/detail/bitwarden-free-password-m/nngceckbapebfimnlniiiahkandclblb"
+};}
 
-async function checkSpeed(){
-  const start=performance.now();
-  try{
-    await fetch("https://speed.cloudflare.com/__down?bytes=1000000",{cache:"no-store"});
-    const sec=(performance.now()-start)/1000;
-    const mbps=(1/sec).toFixed(2);
-    return parseFloat(mbps);
-  }catch(e){return null;}
-}
-
-async function checkDoH(){
-  try{
-    const r=await fetch("https://cloudflare-dns.com/dns-query?name=example.com&type=A",{
-      method:"GET",
-      headers:{ "accept":"application/dns-json" }
-    });
-    return r.ok;
-  }catch(e){return false;}
-}
-
-async function checkUblock(){
-  return new Promise(resolve=>{
-    try{
-      const iframe=document.createElement("iframe");
-      iframe.style.display="none";
-      iframe.src="https://ads.example.com/banner.js";
-      document.body.appendChild(iframe);
-      setTimeout(()=>{
-        if(!iframe.contentWindow || iframe.contentWindow.length===0){
-          resolve(true);
-        }else{
-          resolve(false);
-        }
-        iframe.remove();
-      },800);
-    }catch(e){resolve(false);}
-  });
-}
-
-async function checkEdgeSettings(){
-  let cookieTest="unknown";
-  try{
-    document.cookie="__test_cookie=1; SameSite=None; Secure";
-    cookieTest=document.cookie.includes("__test_cookie=")?"allow":"restrict";
-  }catch(e){cookieTest="restrict";}
-  return cookieTest;
-}
-
-function checkWebGL(){
-  try{
-    const canvas=document.createElement("canvas");
-    const gl=canvas.getContext("webgl")||canvas.getContext("experimental-webgl");
-    if(!gl) return {fp:"なし",vendor:"取得不可",renderer:"取得不可"};
-    const ext=gl.getExtension("WEBGL_debug_renderer_info");
-    const vendor=ext?gl.getParameter(ext.UNMASKED_VENDOR_WEBGL):"不明";
-    const renderer=ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):"不明";
-    const data=gl.getSupportedExtensions().join(",");
-    let hash=0;
-    for(let i=0;i<data.length;i++){hash=((hash<<5)-hash)+data.charCodeAt(i);hash|=0;}
-    return {fp:String(hash),vendor,renderer};
-  }catch(e){
-    return {fp:"エラー",vendor:"取得不可",renderer:"取得不可"};
-  }
-}
-
-function checkCanvasFP(){
-  try{
-    const c=document.createElement("canvas");
-    c.width=200;c.height=50;
-    const ctx=c.getContext("2d");
-    ctx.textBaseline="top";
-    ctx.font="16px 'Arial'";
-    ctx.fillStyle="#f60";
-    ctx.fillRect(0,0,200,50);
-    ctx.fillStyle="#069";
-    ctx.fillText("fingerprint-test-ALL",2,2);
-    const data=c.toDataURL();
-    let hash=0;
-    for(let i=0;i<data.length;i++){hash=((hash<<5)-hash)+data.charCodeAt(i);hash|=0;}
-    return String(hash);
-  }catch(e){return "エラー";}
-}
-
-async function checkAudioFP(){
-  try{
-    const C = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    if(!C) return "未対応";
-    const ctx=new C(1,44100,44100);
-    const osc=ctx.createOscillator();
-    const comp=ctx.createDynamicsCompressor();
-    osc.connect(comp);comp.connect(ctx.destination);
-    osc.start(0);
-    const buf=await ctx.startRendering();
-    let sum=0;
-    const ch=buf.getChannelData(0);
-    for(let i=0;i<ch.length;i+=100){sum+=Math.abs(ch[i]);}
-    return String(sum.toFixed(4));
-  }catch(e){return "エラー";}
-}
-
-function checkStorage(){
-  let ls=false,ss=false;
-  try{localStorage.setItem("__t","1");ls=true;localStorage.removeItem("__t");}catch(e){}
-  try{sessionStorage.setItem("__t","1");ss=true;sessionStorage.removeItem("__t");}catch(e){}
-  return {ls,ss};
-}
-
-function checkAPIs(){
-  const notif=("Notification" in window);
-  const clip=!!(navigator.clipboard && navigator.clipboard.writeText);
-  return {notif,clip};
-}
-
-async function checkIPv6(){
-  try{
-    await fetch("https://[2606:4700:4700::1111]/", {mode:"no-cors"});
-    return true;
-  }catch(e){return false;}
-}
-
-async function checkProxy(){
-  return new Promise(resolve=>{
-    try{
-      const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
-      pc.createDataChannel("x");
-      pc.createOffer().then(o=>pc.setLocalDescription(o));
-      let relay=false;
-      pc.onicecandidate=e=>{
-        if(!e||!e.candidate){
-          pc.close();
-          resolve(relay);
-          return;
-        }
-        if(e.candidate.candidate.includes(" typ relay ")) relay=true;
-      };
-    }catch(e){resolve(false);}
-  });
-}
-
-function checkMisc(){
-  return {
-    lang: navigator.language,
-    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "不明",
-    screen: `${screen.width}x${screen.height} (${window.devicePixelRatio}x)`,
-    secureContext: window.isSecureContext,
-    sw: "serviceWorker" in navigator
-  };
-}
-
-/* ===========================
-   拡張機能リンク
-=========================== */
-function getExtensionLinks(){
-  const b = envInfo.browser;
-
-  const links = {
-    ublock:{
-      Chrome:"https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm",
-      Edge:"https://microsoftedge.microsoft.com/addons/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm",
-      Firefox:"https://addons.mozilla.org/firefox/addon/ublock-origin/"
-    },
-    mbg:{
-      Chrome:"https://chrome.google.com/webstore/detail/malwarebytes-browser-guar/ihcjicgdanjaechkgeegckofjjedodee",
-      Edge:"https://microsoftedge.microsoft.com/addons/detail/malwarebytes-browser-guar/ihcjicgdanjaechkgeegckofjjedodee",
-      Firefox:"https://addons.mozilla.org/firefox/addon/malwarebytes/"
-    },
-    webrtc:{
-      Chrome:"https://chrome.google.com/webstore/detail/webrtc-control/fjkmabmdepjfammlpliljpnbhleegehm",
-      Edge:"https://microsoftedge.microsoft.com/addons/detail/webrtc-control/ejjicmeblgpmajnghnpcppodonldlgfn",
-      Firefox:"https://addons.mozilla.org/firefox/addon/webrtc-control/"
-    },
-    bitwarden:{
-      Chrome:"https://chrome.google.com/webstore/detail/bitwarden-free-password-m/nngceckbapebfimnlniiiahkandclblb",
-      Edge:"https://microsoftedge.microsoft.com/addons/detail/bitwarden-free-password-m/nngceckbapebfimnlniiiahkandclblb",
-      Firefox:"https://addons.mozilla.org/firefox/addon/bitwarden-password-manager/"
-    }
-  };
-
-  function pick(map){
-    return map[b] ?? map.Chrome;
-  }
-
-  return {
-    ublock: pick(links.ublock),
-    mbg: pick(links.mbg),
-    webrtc: pick(links.webrtc),
-    bitwarden: pick(links.bitwarden)
-  };
-}
-
-/* ===========================
-   履歴 & グラフ
-=========================== */
-function saveHistory(report){
-  const list = JSON.parse(localStorage.getItem("diagHistory") || "[]");
-  list.unshift({
-    time: new Date().toLocaleString(),
-    env: envInfo,
-    summary: {
-      speed: report.speedMbps,
-      doh: report.doh,
-      ipv6: report.ipv6,
-      proxy: report.proxy,
-      score: report.score
-    },
-    raw: lastReportText
-  });
-  while(list.length > 10) list.pop();
-  localStorage.setItem("diagHistory", JSON.stringify(list));
-  renderHistory();
-  renderChart();
-}
-
-function renderHistory(){
-  const list = JSON.parse(localStorage.getItem("diagHistory") || "[]");
-  const box = document.getElementById("historyList");
-
-  if(list.length === 0){
-    box.textContent = "まだ履歴はありません。";
-    return;
-  }
-
-  box.innerHTML = list.map((h,i)=>`
-    <div class="history-item" onclick="showHistory(${i})">
-      <b>${h.time}</b><br>
-      ${h.env.browser} / ${h.env.os} — 速度:${h.summary.speed ?? "?"}Mbps / DoH:${h.summary.doh}
-    </div>
-  `).join("");
-}
-
-function showHistory(i){
-  const list = JSON.parse(localStorage.getItem("diagHistory") || "[]");
-  const h = list[i];
-  document.getElementById("raw").textContent = h.raw;
-  document.getElementById("openReportBtn").style.display = "block";
-}
-
-function renderChart(){
-  const list = JSON.parse(localStorage.getItem("diagHistory") || "[]");
-  const ctx = document.getElementById("scoreChart").getContext("2d");
-  const labels = list.map(h=>h.time).reverse();
-  const data = list.map(h=>h.summary.score ?? 0).reverse();
-
-  if(scoreChart) scoreChart.destroy();
-
-  scoreChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "セキュリティスコア",
-        data,
-        borderColor: "#40c4ff",
-        backgroundColor: "rgba(64,196,255,.2)",
-        tension: 0.2
-      }]
-    },
-    options: {
-      scales: {
-        y: {min:0,max:100}
-      }
-    }
-  });
-}
-
-/* ===========================
-   診断本体
-=========================== */
+/* ===== 履歴 & グラフ ===== */
+function saveHistory(r){const L=JSON.parse(localStorage.getItem("diagHistory")||"[]");L.unshift({time:new Date().toLocaleString(),env:envInfo,summary:{speed:r.speedMbps,doh:r.doh,ipv6:r.ipv6,proxy:r.proxy,score:r.score},raw:lastReportText});while(L.length>10)L.pop();localStorage.setItem("diagHistory",JSON.stringify(L));renderHistory();renderChart();}
+function renderHistory(){const L=JSON.parse(localStorage.getItem("diagHistory")||"[]"),b=document.getElementById("historyList");if(!L.length){b.textContent="まだ履歴はありません。";return}b.innerHTML=L.map((h,i)=>`<div class="history-item" onclick="showHistory(${i})"><b>${h.time}</b><br>${h.env.browser} / ${h.env.os} — 速度:${h.summary.speed??"?"}Mbps / DoH:${h.summary.doh}</div>`).join("")}
+function showHistory(i){const L=JSON.parse(localStorage.getItem("diagHistory")||"[]"),h=L[i];document.getElementById("raw").textContent=h.raw;document.getElementById("openReportBtn").style.display="block"}
+function renderChart(){const L=JSON.parse(localStorage.getItem("diagHistory")||"[]"),ctx=document.getElementById("scoreChart").getContext("2d"),labels=L.map(h=>h.time).reverse(),data=L.map(h=>h.summary.score??0).reverse();if(scoreChart)scoreChart.destroy();scoreChart=new Chart(ctx,{type:"line",data:{labels,datasets:[{label:"セキュリティスコア",data,borderColor:"#40c4ff",backgroundColor:"rgba(64,196,255,.2)",tension:.2}]},options:{scales:{y:{min:0,max:100}}}})}
+/* ===== 診断本体 ===== */
 async function runAll(){
-  const runBtn = document.getElementById("runBtn");
-  runBtn.disabled = true;
-  runBtn.textContent = "診断中…";
+const runBtn=document.getElementById("runBtn");
+runBtn.disabled=true;runBtn.textContent="診断中…";
 
-  const out=document.getElementById("result");
-  const advice=document.getElementById("advice");
-  const ext=document.getElementById("extensions");
-  const raw=document.getElementById("raw");
-  const progressArea=document.getElementById("progressArea");
+const out=document.getElementById("result"),
+advice=document.getElementById("advice"),
+ext=document.getElementById("extensions"),
+raw=document.getElementById("raw"),
+progressArea=document.getElementById("progressArea");
 
-  out.innerHTML="";
-  advice.innerHTML="";
-  ext.innerHTML="";
-  raw.textContent="";
-  progressArea.innerHTML="";
+out.innerHTML="";advice.innerHTML="";ext.innerHTML="";
+raw.textContent="";progressArea.innerHTML="";
 
-  const barBg = document.createElement("div");
-  barBg.className = "progress-bg";
-  const bar = document.createElement("div");
-  bar.className = "progress-bar";
-  barBg.appendChild(bar);
-  const text = document.createElement("div");
-  text.className = "progress-text";
-  progressArea.appendChild(barBg);
-  progressArea.appendChild(text);
+/* 進捗バー */
+const barBg=document.createElement("div");barBg.className="progress-bg";
+const bar=document.createElement("div");bar.className="progress-bar";
+barBg.appendChild(bar);
+const text=document.createElement("div");text.className="progress-text";
+progressArea.appendChild(barBg);progressArea.appendChild(text);
 
-  const tasks = [
-    {name:"WebRTC チェック", fn:checkWebRTC, color:"#40c4ff"},
-    {name:"通信速度", fn:checkSpeed, color:"#00e676"},
-    {name:"DoH", fn:checkDoH, color:"#00e676"},
-    {name:"uBlock 判定", fn:checkUblock, color:"#ffca28"},
-    {name:"Cookie 挙動", fn:checkEdgeSettings, color:"#ffca28"},
-    {name:"WebGL 指紋", fn:()=>Promise.resolve(checkWebGL()), color:"#b388ff"},
-    {name:"Canvas 指紋", fn:()=>Promise.resolve(checkCanvasFP()), color:"#b388ff"},
-    {name:"Audio 指紋", fn:checkAudioFP, color:"#b388ff"},
-    {name:"Storage", fn:()=>Promise.resolve(checkStorage()), color:"#ffeb3b"},
-    {name:"API 状態", fn:()=>Promise.resolve(checkAPIs()), color:"#ffeb3b"},
-    {name:"IPv6", fn:checkIPv6, color:"#40c4ff"},
-    {name:"Proxy 推定", fn:checkProxy, color:"#ef5350"}
-  ];
+/* タスク一覧 */
+const tasks=[
+{name:"WebRTC チェック",fn:checkWebRTC,color:"#40c4ff"},
+{name:"通信速度",fn:checkSpeed,color:"#00e676"},
+{name:"DoH",fn:checkDoH,color:"#00e676"},
+{name:"uBlock 判定",fn:checkUblock,color:"#ffca28"},
+{name:"Cookie 挙動",fn:checkEdgeSettings,color:"#ffca28"},
+{name:"WebGL 指紋",fn:()=>Promise.resolve(checkWebGL()),color:"#b388ff"},
+{name:"Canvas 指紋",fn:()=>Promise.resolve(checkCanvasFP()),color:"#b388ff"},
+{name:"Audio 指紋",fn:checkAudioFP,color:"#b388ff"},
+{name:"Storage",fn:()=>Promise.resolve(checkStorage()),color:"#ffeb3b"},
+{name:"API 状態",fn:()=>Promise.resolve(checkAPIs()),color:"#ffeb3b"},
+{name:"IPv6",fn:checkIPv6,color:"#40c4ff"},
+{name:"Proxy 推定",fn:checkProxy,color:"#ef5350"}
+];
 
-  const total = tasks.length;
-  let done = 0;
-  const start = performance.now();
-  const results = {};
+const total=tasks.length;
+let done=0;
+const start=performance.now();
+const results={};
 
-  for(const t of tasks){
-    text.textContent = `実行中: ${t.name} (${done}/${total})`;
-    bar.style.background = t.color;
+/* タスク実行ループ */
+for(const t of tasks){
+text.textContent=`実行中: ${t.name} (${done}/${total})`;
+bar.style.background=t.color;
 
-    const r = await t.fn();
-    results[t.name] = r;
+const r=await t.fn();
+results[t.name]=r;
 
-    done++;
-    const percent = Math.floor(done / total * 100);
-    bar.style.width = percent + "%";
+done++;
+bar.style.width=Math.floor(done/total*100)+"%";
 
-    const elapsed = (performance.now() - start) / 1000;
-    const avg = elapsed / done;
-    const remain = avg * (total - done);
+const el=(performance.now()-start)/1000,
+avg=el/done,
+remain=avg*(total-done);
 
-    text.textContent =
-      `実行中: ${t.name} (${done}/${total}) — 残り約 ${remain.toFixed(1)} 秒`;
-  }
-
-  bar.style.width = "100%";
-  bar.style.background = "#00e676";
-  text.textContent = "診断完了";
-
-  const ua=navigator.userAgent;
-  const https=location.protocol==="https:";
-  const cpu=navigator.hardwareConcurrency;
-  const ram=navigator.deviceMemory||"不明";
-  const misc=checkMisc();
-
-  const webrtcIPs = results["WebRTC チェック"] || [];
-  const speed = results["通信速度"];
-  const doh = results["DoH"];
-  const ublock = results["uBlock 判定"];
-  const edge = results["Cookie 挙動"];
-  const cWebGL = results["WebGL 指紋"];
-  const cCanvas = results["Canvas 指紋"];
-  const audioFP = results["Audio 指紋"];
-  const storage = results["Storage"];
-  const apis = results["API 状態"];
-  const ipv6 = results["IPv6"];
-  const proxy = results["Proxy 推定"];
-
-  const webrtcLeak = webrtcIPs.some(ip=>!/^10\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip));
-
-  let score = 100;
-  if(!https) score -= 15;
-  if(!doh) score -= 10;
-  if(!ublock) score -= 15;
-  if(speed !== null && speed < 20) score -= 10;
-  if(webrtcLeak) score -= 10;
-  if(!ipv6) score -= 5;
-  if(!storage.ls || !storage.ss) score -= 5;
-  if(!misc.secureContext) score -= 10;
-  if(proxy) score -= 5;
-  if(score < 0) score = 0;
-
-  out.innerHTML = `
-    <div style="margin-bottom:8px;font-weight:600;font-size:1rem;">
-      セキュリティスコア: ${score} / 100
-    </div>
-    <ul style="padding-left:18px;font-size:.9rem;">
-      <li>HTTPS: ${https ? "有効" : "無効"}</li>
-      <li>通信速度: ${speed===null ? "測定失敗" : speed + " Mbps"}</li>
-      <li>DoH: ${doh ? "有効" : "無効"}</li>
-      <li>uBlock Origin: ${ublock ? "有効っぽい" : "未検出"}</li>
-      <li>WebRTC IP 漏洩: ${webrtcLeak ? "<span style='color:#ef5350;'>あり</span>" : "なし"}</li>
-      <li>IPv6: ${ipv6 ? "到達可能" : "到達不可"}</li>
-      <li>Cookie SameSite=None: ${edge==="allow" ? "許可" : "制限"}</li>
-    </ul>
-  `;
-
-  const tips = [];
-  if(!https) tips.push("サイトを常に HTTPS で開く設定を有効にしてください。");
-  if(!ublock) tips.push("uBlock Origin などのコンテンツブロッカーを導入すると安全性が上がります。");
-  if(!doh) tips.push("DNS over HTTPS (DoH) を有効にすると、DNS の盗聴リスクを下げられます。");
-  if(webrtcLeak) tips.push("WebRTC による IP 漏洩を防ぐ拡張機能の導入を検討してください。");
-  if(speed!==null && speed < 20) tips.push("通信速度が遅めです。回線や VPN の状態を確認してください。");
-  if(!ipv6) tips.push("IPv6 は必須ではありませんが、対応すると将来的な互換性が向上します。");
-  if(!misc.secureContext) tips.push("HTTPS でこのツールを開くと、より多くの機能が有効になります。");
-
-  advice.innerHTML = tips.length===0
-    ? "<b>大きな問題は検出されませんでした。</b>"
-    : "<b>改善のヒント:</b><br>" + tips.map(t=>"・"+t).join("<br>");
-
-  const links = getExtensionLinks();
-  const rec = [];
-
-  rec.push({
-    name:"uBlock Origin",
-    desc:"広告・トラッカー・悪質サイトを強力にブロック",
-    url:links.ublock
-  });
-
-  rec.push({
-    name:"Malwarebytes Browser Guard",
-    desc:"フィッシング・マルウェア・詐欺サイトをブロック",
-    url:links.mbg
-  });
-
-  if(webrtcLeak){
-    rec.push({
-      name:"WebRTC Control",
-      desc:"WebRTC による IP アドレス漏洩を防止",
-      url:links.webrtc
-    });
-  }
-
-  rec.push({
-    name:"Bitwarden",
-    desc:"オープンソースのパスワードマネージャー",
-    url:links.bitwarden
-  });
-
-  ext.innerHTML = "<h3>おすすめ拡張機能</h3>" + rec.map(r=>`
-    <div class="ext-item">
-      <b>${r.name}</b><br>
-      ${r.desc}<br>
-      <a href="${r.url}" target="_blank" rel="noopener noreferrer">→ ストアで開く</a>
-    </div>
-  `).join("");
-
-  const report = {
-    env: envInfo,
-    https,
-    ua,
-    cpu,
-    ram,
-    misc,
-    webrtcIPs,
-    speedMbps: speed,
-    doh,
-    ublock,
-    edgeCookieBehavior: edge,
-    webglFP: cWebGL,
-    canvasFP: cCanvas,
-    audioFP,
-    storage,
-    apis,
-    ipv6,
-    proxy,
-    score
-  };
-
-  const textLines = [];
-  textLines.push("=== Browser Security Report ===");
-  for(const [k,v] of Object.entries(report)){
-    textLines.push(k + ": " + JSON.stringify(v));
-  }
-  lastReportText = textLines.join("\n");
-  raw.textContent = lastReportText;
-
-  saveHistory(report);
-  document.getElementById("openReportBtn").style.display = "block";
-
-  runBtn.disabled = false;
-  runBtn.textContent = "すべて診断する";
+text.textContent=`実行中: ${t.name} (${done}/${total}) — 残り約 ${remain.toFixed(1)} 秒`;
 }
 
-/* ===========================
-   レポートへスクロール
-=========================== */
-function scrollToReport(){
-  document.getElementById("raw").scrollIntoView({behavior:"smooth"});
+/* 完了表示 */
+bar.style.width="100%";
+bar.style.background="#00e676";
+text.textContent="診断完了";
+
+/* 結果取り出し */
+const webrtcIPs=results["WebRTC チェック"]||[],
+speed=results["通信速度"],
+doh=results["DoH"],
+ublock=results["uBlock 判定"],
+edge=results["Cookie 挙動"],
+cWebGL=results["WebGL 指紋"],
+cCanvas=results["Canvas 指紋"],
+audioFP=results["Audio 指紋"],
+storage=results["Storage"],
+apis=results["API 状態"],
+ipv6=results["IPv6"],
+proxy=results["Proxy 推定"],
+misc=checkMisc(),
+https=location.protocol==="https:",
+ua=navigator.userAgent,
+cpu=navigator.hardwareConcurrency,
+ram=navigator.deviceMemory||"不明";
+
+/* WebRTC 漏洩判定 */
+const webrtcLeak=webrtcIPs.some(ip=>!/^10\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip));
+
+/* スコアリング */
+let score=100;
+if(!https)score-=15;
+if(!doh)score-=10;
+if(!ublock)score-=15;
+if(speed!==null&&speed<20)score-=10;
+if(webrtcLeak)score-=10;
+if(!ipv6)score-=5;
+if(!storage.ls||!storage.ss)score-=5;
+if(!misc.secureContext)score-=10;
+if(proxy)score-=5;
+if(score<0)score=0;
+
+/* 結果表示 */
+out.innerHTML=`<div style="margin-bottom:8px;font-weight:600;font-size:1rem;">
+セキュリティスコア: ${score} / 100</div>
+<ul style="padding-left:18px;font-size:.9rem;">
+<li>HTTPS: ${https?"有効":"無効"}</li>
+<li>通信速度: ${speed===null?"測定失敗":speed+" Mbps"}</li>
+<li>DoH: ${doh?"有効":"無効"}</li>
+<li>uBlock Origin: ${ublock?"有効っぽい":"未検出"}</li>
+<li>WebRTC IP 漏洩: ${webrtcLeak?"<span style='color:#ef5350;'>あり</span>":"なし"}</li>
+<li>IPv6: ${ipv6?"到達可能":"到達不可"}</li>
+<li>Cookie SameSite=None: ${edge==="allow"?"許可":"制限"}</li>
+</ul>`;
+
+/* 改善アドバイス */
+const tips=[];
+if(!https)tips.push("HTTPS を有効にしてください。");
+if(!ublock)tips.push("uBlock Origin の導入を推奨します。");
+if(!doh)tips.push("DNS over HTTPS を有効にしてください。");
+if(webrtcLeak)tips.push("WebRTC Control で IP 漏洩を防止できます。");
+if(speed!==null&&speed<20)tips.push("通信速度が遅めです。");
+if(!ipv6)tips.push("IPv6 は必須ではありませんが対応推奨。");
+if(!misc.secureContext)tips.push("HTTPS で開くと機能が増えます。");
+
+advice.innerHTML=tips.length===0
+?"<b>大きな問題は検出されませんでした。</b>"
+:"<b>改善のヒント:</b><br>"+tips.map(t=>"・"+t).join("<br>");
+
+/* 拡張機能レコメンド（Chrome Web Store 統一） */
+const links=getExtensionLinks();
+const rec=[
+{name:"uBlock Origin",desc:"広告・トラッカーを強力にブロック",url:links.ublock},
+{name:"Malwarebytes Browser Guard",desc:"詐欺サイトをブロック",url:links.mbg},
+{name:"Bitwarden",desc:"安全なパスワード管理",url:links.bitwarden}
+];
+if(webrtcLeak)rec.push({name:"WebRTC Control",desc:"WebRTC IP 漏洩を防止",url:links.webrtc});
+
+ext.innerHTML="<h3>おすすめ拡張機能</h3>"+rec.map(r=>`
+<div class="ext-item"><b>${r.name}</b><br>${r.desc}<br>
+<a href="${r.url}" target="_blank">→ ストアで開く</a></div>`).join("");
+
+/* レポート生成 */
+const report={
+env:envInfo,https,ua,cpu,ram,misc,webrtcIPs,speedMbps:speed,
+doh,ublock,edgeCookieBehavior:edge,webglFP:cWebGL,canvasFP:cCanvas,
+audioFP,storage,apis,ipv6,proxy,score
+};
+
+lastReportText=Object.entries(report).map(([k,v])=>`${k}: ${JSON.stringify(v)}`).join("\n");
+raw.textContent=lastReportText;
+
+/* 履歴保存 & グラフ更新 */
+saveHistory(report);
+
+/* レポートボタン表示 */
+document.getElementById("openReportBtn").style.display="block";
+
+runBtn.disabled=false;
+runBtn.textContent="すべて診断する";
 }
 
-/* ===========================
-   レポート保存（ZIP）
-=========================== */
+/* ===== レポートへスクロール ===== */
+function scrollToReport(){document.getElementById("raw").scrollIntoView({behavior:"smooth"});}
+
+/* ===== ZIP 保存 ===== */
 async function downloadReport(){
-  if(!lastReportText){
-    alert("先に診断を実行してください。");
-    return;
-  }
-  const zip = new JSZip();
-  const ts = new Date().toISOString().replace(/[:.]/g,"-");
-  zip.file("browser-security-report-" + ts + ".txt", lastReportText);
-  const blob = await zip.generateAsync({type:"blob"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "browser-security-report-" + ts + ".zip";
-  a.click();
-  URL.revokeObjectURL(url);
+if(!lastReportText){alert("先に診断を実行してください。");return;}
+const zip=new JSZip(),ts=new Date().toISOString().replace(/[:.]/g,"-");
+zip.file("browser-security-report-"+ts+".txt",lastReportText);
+const blob=await zip.generateAsync({type:"blob"});
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;a.download="browser-security-report-"+ts+".zip";a.click();
+URL.revokeObjectURL(url);
 }
 
-/* ===========================
-   初期化
-=========================== */
+/* ===== 初期化 ===== */
 renderHistory();
 renderChart();
-</script>
-
-</div>
-</body>
-</html>
+</script></div></body></html>
