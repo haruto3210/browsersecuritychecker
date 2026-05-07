@@ -2,86 +2,205 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ブラウザ セキュリティ診断 ALL-IN-ONE</title>
+<title>ブラウザ セキュリティ診断 ALL-IN-ONE PRO</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root {
     color-scheme: dark;
-    --ok:#66bb6a; --warn:#ef5350; --mid:#ffca28;
-    --panel:#151821; --text:#e0e0e0; --muted:#9e9e9e;
+    --ok:#4caf50; --warn:#ef5350; --mid:#ffca28;
+    --bg:#050608; --panel:#11141f; --panel2:#181c29;
+    --text:#e0e0e0; --muted:#9e9e9e; --accent:#40c4ff;
   }
-  body {
+  *{box-sizing:border-box;}
+  body{
     margin:0; padding:16px;
-    background:#050608; color:var(--text);
-    font-family:system-ui,sans-serif;
+    background:radial-gradient(circle at top,#1a237e 0,#050608 55%);
+    color:var(--text);
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   }
-  .wrap { max-width:980px; margin:0 auto; }
-  h1 { font-size:1.6rem; margin-bottom:8px; }
-  h2 { font-size:1.1rem; margin:18px 0 8px; border-left:4px solid #4fc3f7; padding-left:8px; }
-  .panel {
-    background:rgba(255,255,255,.05);
-    border-radius:10px; padding:14px; margin-bottom:14px;
+  .wrap{max-width:1040px;margin:0 auto;}
+  header{
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .title-block h1{margin:0;font-size:1.7rem;}
+  .title-block p{margin:4px 0 0;font-size:.85rem;color:var(--muted);}
+  .chip{
+    padding:4px 10px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.18);
+    font-size:.75rem;color:var(--muted);
+    backdrop-filter:blur(10px);
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:minmax(0,2fr) minmax(0,1.4fr);
+    gap:14px;
+  }
+  @media(max-width:900px){
+    .grid{grid-template-columns:1fr;}
+  }
+  .panel{
+    background:linear-gradient(145deg,rgba(255,255,255,.04),rgba(0,0,0,.6));
+    border-radius:14px;
+    padding:14px 14px 12px;
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 18px 40px rgba(0,0,0,.6);
+  }
+  .panel h2{
+    margin:0 0 8px;
+    font-size:1rem;
+    display:flex;align-items:center;gap:6px;
+  }
+  .panel h2 span.icon{
+    width:18px;height:18px;border-radius:6px;
+    background:rgba(64,196,255,.18);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:.8rem;
+  }
+  .sub{
+    font-size:.8rem;color:var(--muted);margin-bottom:8px;
+  }
+  .btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+  button{
+    padding:8px 16px;border-radius:999px;border:none;
+    background:linear-gradient(135deg,#00e5ff,#00c853);
+    color:#000;font-weight:600;font-size:.85rem;
+    cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  }
+  button.secondary{
+    background:transparent;
+    color:var(--accent);
+    border:1px solid rgba(64,196,255,.6);
+  }
+  button:disabled{
+    opacity:.5;cursor:default;
+  }
+  .badge{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:4px 9px;border-radius:999px;
+    margin:3px 3px 3px 0;
+    font-size:.75rem;border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.35);
+  }
+  .ok{color:var(--ok);border-color:rgba(76,175,80,.7);}
+  .warn{color:var(--warn);border-color:rgba(239,83,80,.7);}
+  .mid{color:var(--mid);border-color:rgba(255,202,40,.7);}
+  .badge-label{font-weight:600;font-size:.7rem;opacity:.8;}
+  .result{margin-top:6px;font-size:.85rem;}
+  ul{margin:6px 0 0 18px;font-size:.8rem;color:var(--muted);}
+  pre{
+    white-space:pre-wrap;word-break:break-all;
+    font-size:.75rem;
+    background:rgba(0,0,0,.55);
+    padding:8px;border-radius:8px;
     border:1px solid rgba(255,255,255,.08);
   }
-  .badge {
-    display:inline-block; padding:4px 8px; border-radius:999px;
-    margin:4px; font-size:.8rem; border:1px solid rgba(255,255,255,.1);
-  }
-  .ok{color:var(--ok);border-color:var(--ok);}
-  .warn{color:var(--warn);border-color:var(--warn);}
-  .mid{color:var(--mid);border-color:var(--mid);}
-  button {
-    padding:8px 16px; border-radius:999px; border:none;
-    background:linear-gradient(135deg,#00e5ff,#00c853);
-    color:#000; font-weight:600; cursor:pointer; margin-top:8px; margin-right:8px;
-  }
-  .result { margin-top:10px; font-size:.9rem; }
-  pre {
-    white-space:pre-wrap;
-    word-break:break-all;
-    font-size:.8rem;
-    background:rgba(0,0,0,.4);
-    padding:8px;
-    border-radius:6px;
-  }
-  .ext-item {
+  .ext-item{
     margin:6px 0;
-    padding:8px;
-    background:rgba(255,255,255,.05);
-    border-radius:6px;
-    border:1px solid rgba(255,255,255,.1);
+    padding:8px 9px;
+    background:var(--panel2);
+    border-radius:8px;
+    border:1px solid rgba(255,255,255,.12);
+    font-size:.8rem;
   }
-  .ext-item a { color:#4fc3f7; text-decoration:none; }
+  .ext-item-header{
+    display:flex;justify-content:space-between;align-items:center;
+    gap:6px;margin-bottom:2px;
+  }
+  .ext-name{font-weight:600;font-size:.85rem;}
+  .ext-tag{
+    font-size:.7rem;
+    padding:2px 7px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.18);
+    color:var(--muted);
+  }
+  .ext-item a{color:var(--accent);text-decoration:none;font-size:.8rem;}
+  .pill-row{
+    display:flex;flex-wrap:wrap;gap:6px;
+    margin-top:4px;font-size:.7rem;
+  }
+  .pill{
+    padding:2px 7px;border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);
+    color:var(--muted);
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<h1>ブラウザ セキュリティ診断 ALL-IN-ONE</h1>
+<header>
+  <div class="title-block">
+    <h1>ブラウザ セキュリティ診断 ALL-IN-ONE PRO</h1>
+    <p>WebGL / Canvas / Audio 指紋・WebRTC・DoH・IPv6・Proxy 推定・拡張機能レコメンド・レポート出力</p>
+  </div>
+  <div class="chip" id="envChip">環境: 解析中…</div>
+</header>
 
-<div class="panel">
-  <h2>自動診断</h2>
-  <button onclick="runAll()">すべて診断する</button>
-  <button onclick="downloadReport()">結果をテキストでダウンロード</button>
-  <div id="result" class="result"></div>
+<div class="grid">
+  <div class="panel">
+    <h2><span class="icon">⚙</span>自動診断</h2>
+    <p class="sub">ブラウザで取得可能な情報をまとめてチェックし、セキュリティ状態を可視化します。</p>
+    <div class="btn-row">
+      <button id="runBtn" onclick="runAll()">
+        <span>すべて診断する</span>
+      </button>
+      <button class="secondary" onclick="downloadReport()">
+        レポートをテキストで保存
+      </button>
+    </div>
+    <div id="result" class="result"></div>
 
-  <h2>改善ポイント（自動コメント）</h2>
-  <div id="advice" class="result"></div>
+    <h2><span class="icon">💡</span>改善ポイント（自動コメント）</h2>
+    <div id="advice" class="result"></div>
 
-  <h2>推奨セキュリティ拡張機能（自動判定）</h2>
-  <div id="extensions" class="result"></div>
+    <h2><span class="icon">🧩</span>推奨セキュリティ拡張機能（自動判定）</h2>
+    <div id="extensions" class="result"></div>
+  </div>
 
-  <h2>生データ（テキスト）</h2>
-  <pre id="raw"></pre>
+  <div class="panel">
+    <h2><span class="icon">📊</span>生データ / 環境情報</h2>
+    <p class="sub">診断結果の生データ。バグ調査や共有用にテキストとして保存できます。</p>
+    <pre id="raw">まだ診断は実行されていません。</pre>
+  </div>
 </div>
 
 <script>
 let lastReportText = "";
+let envInfo = {browser:"Unknown", os:"Unknown"};
 
-// バッジ生成
-function badge(text,type){return `<span class="badge ${type}">${text}</span>`;}
+// --- 環境判定（ブラウザ / OS） ---
+function detectEnv(){
+  const ua = navigator.userAgent;
+  let browser = "Unknown";
+  if(/Edg\//.test(ua)) browser = "Edge";
+  else if(/Firefox\//.test(ua)) browser = "Firefox";
+  else if(/Chrome\//.test(ua)) browser = "Chrome";
+  else if(/Safari\//.test(ua)) browser = "Safari";
 
-// WebRTCリーク
+  let os = "Unknown";
+  if(/Windows NT/.test(ua)) os = "Windows";
+  else if(/Android/.test(ua)) os = "Android";
+  else if(/Mac OS X/.test(ua)) os = "macOS";
+  else if(/Linux/.test(ua)) os = "Linux";
+  else if(/iPhone|iPad|iPod/.test(ua)) os = "iOS";
+
+  envInfo = {browser, os};
+  const chip = document.getElementById("envChip");
+  chip.textContent = `環境: ${browser} / ${os}`;
+}
+detectEnv();
+
+// --- UI ヘルパ ---
+function badge(label, value, type){
+  return `<span class="badge ${type}">
+    <span class="badge-label">${label}</span>
+    <span>${value}</span>
+  </span>`;
+}
+
+// --- 各種チェック ---
 async function checkWebRTC(){
   return new Promise(resolve=>{
     try{
@@ -102,7 +221,6 @@ async function checkWebRTC(){
   });
 }
 
-// 通信速度
 async function checkSpeed(){
   const start=performance.now();
   try{
@@ -113,7 +231,6 @@ async function checkSpeed(){
   }catch(e){return null;}
 }
 
-// DoH推定
 async function checkDoH(){
   try{
     const r=await fetch("https://cloudflare-dns.com/dns-query?name=example.com&type=A",{
@@ -124,7 +241,6 @@ async function checkDoH(){
   }catch(e){return false;}
 }
 
-// uBlock間接判定
 async function checkUblock(){
   return new Promise(resolve=>{
     try{
@@ -144,8 +260,6 @@ async function checkUblock(){
   });
 }
 
-
-// Edge設定推定
 async function checkEdgeSettings(){
   let cookieTest="unknown";
   try{
@@ -155,7 +269,6 @@ async function checkEdgeSettings(){
   return cookieTest;
 }
 
-// WebGL Fingerprint + GPU詳細
 function checkWebGL(){
   try{
     const canvas=document.createElement("canvas");
@@ -173,7 +286,6 @@ function checkWebGL(){
   }
 }
 
-// Canvas Fingerprint
 function checkCanvasFP(){
   try{
     const c=document.createElement("canvas");
@@ -192,7 +304,6 @@ function checkCanvasFP(){
   }catch(e){return "エラー";}
 }
 
-// Audio Fingerprint
 async function checkAudioFP(){
   try{
     const C = window.OfflineAudioContext || window.webkitOfflineAudioContext;
@@ -210,7 +321,6 @@ async function checkAudioFP(){
   }catch(e){return "エラー";}
 }
 
-// LocalStorage / SessionStorage
 function checkStorage(){
   let ls=false,ss=false;
   try{localStorage.setItem("__t","1");ls=true;localStorage.removeItem("__t");}catch(e){}
@@ -218,14 +328,12 @@ function checkStorage(){
   return {ls,ss};
 }
 
-// Notification / Clipboard
 function checkAPIs(){
   const notif=("Notification" in window);
   const clip=!!(navigator.clipboard && navigator.clipboard.writeText);
   return {notif,clip};
 }
 
-// IPv6推定
 async function checkIPv6(){
   try{
     await fetch("https://[2606:4700:4700::1111]/", {mode:"no-cors"});
@@ -233,7 +341,6 @@ async function checkIPv6(){
   }catch(e){return false;}
 }
 
-// Proxy推定
 async function checkProxy(){
   return new Promise(resolve=>{
     try{
@@ -253,7 +360,6 @@ async function checkProxy(){
   });
 }
 
-// Misc
 function checkMisc(){
   return {
     lang: navigator.language,
@@ -264,8 +370,56 @@ function checkMisc(){
   };
 }
 
-// 総合診断
+// --- 拡張機能リンク選択（ブラウザ / OS 切り替え） ---
+function getExtensionLinks(){
+  const b = envInfo.browser;
+  const os = envInfo.os;
+
+  const links = {
+    ublock:{
+      Chrome:"https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm",
+      Edge:"https://microsoftedge.microsoft.com/addons/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm",
+      Firefox:"https://addons.mozilla.org/firefox/addon/ublock-origin/"
+    },
+    mbg:{
+      Chrome:"https://chrome.google.com/webstore/detail/malwarebytes-browser-guar/ihcjicgdanjaechkgeegckofjjedodee",
+      Edge:"https://microsoftedge.microsoft.com/addons/detail/malwarebytes-browser-guar/ihcjicgdanjaechkgeegckofjjedodee",
+      Firefox:"https://addons.mozilla.org/firefox/addon/malwarebytes/"
+    },
+    webrtc:{
+      Chrome:"https://chrome.google.com/webstore/detail/webrtc-control/fjkmabmdepjfammlpliljpnbhleegehm",
+      Edge:"https://microsoftedge.microsoft.com/addons/detail/webrtc-control/ejjicmeblgpmajnghnpcppodonldlgfn",
+      Firefox:"https://addons.mozilla.org/firefox/addon/webrtc-control/"
+    },
+    bitwarden:{
+      Chrome:"https://chrome.google.com/webstore/detail/bitwarden-free-password-m/nngceckbapebfimnlniiiahkandclblb",
+      Edge:"https://microsoftedge.microsoft.com/addons/detail/bitwarden-free-password-m/nngceckbapebfimnlniiiahkandclblb",
+      Firefox:"https://addons.mozilla.org/firefox/addon/bitwarden-password-manager/"
+    }
+  };
+
+  function pick(map){
+    if(map[b]) return map[b];
+    if(map.Chrome) return map.Chrome;
+    return Object.values(map)[0];
+  }
+
+  return {
+    os,
+    browser:b,
+    ublock: pick(links.ublock),
+    mbg: pick(links.mbg),
+    webrtc: pick(links.webrtc),
+    bitwarden: pick(links.bitwarden)
+  };
+}
+
+// --- 総合診断 ---
 async function runAll(){
+  const runBtn = document.getElementById("runBtn");
+  runBtn.disabled = true;
+  runBtn.textContent = "診断中…";
+
   const out=document.getElementById("result");
   const advice=document.getElementById("advice");
   const ext=document.getElementById("extensions");
@@ -302,113 +456,157 @@ async function runAll(){
 
   // 表示
   let html="";
-  html+=https?badge("HTTPS: OK","ok"):badge("HTTPS: 非HTTPS","warn");
-  html+=badge("UA: "+ua,"mid");
-  html+=badge("CPU: "+cpu,"mid");
-  html+=badge("RAM: "+ram+"GB","mid");
-  html+=badge("言語: "+misc.lang,"mid");
-  html+=badge("TZ: "+misc.tz,"mid");
-  html+=badge("画面: "+misc.screen,"mid");
-  html+=badge("SecureContext: "+(misc.secureContext?"YES":"NO"), misc.secureContext?"ok":"warn");
-  html+=badge("SW: "+(misc.sw?"YES":"NO"),"mid");
-  html+=badge("WebRTC IP: "+webrtcIPs.join(", ") ,"mid");
-  html+=badge("速度: "+(speed?speed+" Mbps":"測定不可"), speed && speed>30?"ok":"mid");
-  html+=badge("DoH: "+(doh?"有効":"無効"), doh?"ok":"mid");
-  html+=badge("uBlock: "+(ublock?"動作中":"無効/例外"), ublock?"ok":"warn");
-  html+=badge("Cookie挙動: "+edge,"mid");
-  html+=badge("WebGL FP: "+cWebGL.fp,"mid");
-  html+=badge("GPU: "+cWebGL.vendor+" / "+cWebGL.renderer,"mid");
-  html+=badge("Canvas FP: "+cCanvas,"mid");
-  html+=badge("Audio FP: "+audioFP,"mid");
-  html+=badge("LocalStorage: "+(storage.ls?"OK":"NG"), storage.ls?"ok":"warn");
-  html+=badge("SessionStorage: "+(storage.ss?"OK":"NG"), storage.ss?"ok":"warn");
-  html+=badge("Notification: "+(apis.notif?"OK":"NG"),"mid");
-  html+=badge("Clipboard: "+(apis.clip?"OK":"NG"),"mid");
-  html+=badge("IPv6: "+(ipv6?"到達":"不可"),"mid");
-  html+=badge("Proxy推定: "+(proxy?"VPN/Proxyの可能性":"なし"),"mid");
+  html+=https
+    ? badge("HTTPS", "OK", "ok")
+    : badge("HTTPS", "非HTTPS", "warn");
+  html+=badge("UA", ua, "mid");
+  html+=badge("CPU", cpu+" スレッド", "mid");
+  html+=badge("RAM", ram+" GB", "mid");
+  html+=badge("言語", misc.lang, "mid");
+  html+=badge("TZ", misc.tz, "mid");
+  html+=badge("画面", misc.screen, "mid");
+  html+=badge("SecureContext", misc.secureContext?"YES":"NO", misc.secureContext?"ok":"warn");
+  html+=badge("ServiceWorker", misc.sw?"対応":"未対応", "mid");
+  html+=badge("WebRTC IP", webrtcIPs.join(", ")||"なし", "mid");
+  html+=badge("速度", speed?speed+" Mbps":"測定不可", speed && speed>30?"ok":"mid");
+  html+=badge("DoH", doh?"有効の可能性高い":"無効の可能性", doh?"ok":"mid");
+  html+=badge("uBlock推定", ublock?"動作中の可能性高い":"無効/例外の可能性", ublock?"ok":"warn");
+  html+=badge("Cookie挙動", edge, "mid");
+  html+=badge("WebGL FP", cWebGL.fp, "mid");
+  html+=badge("GPU", cWebGL.vendor+" / "+cWebGL.renderer, "mid");
+  html+=badge("Canvas FP", cCanvas, "mid");
+  html+=badge("Audio FP", audioFP, "mid");
+  html+=badge("LocalStorage", storage.ls?"OK":"NG", storage.ls?"ok":"warn");
+  html+=badge("SessionStorage", storage.ss?"OK":"NG", storage.ss?"ok":"warn");
+  html+=badge("Notification API", apis.notif?"利用可":"不可", "mid");
+  html+=badge("Clipboard API", apis.clip?"利用可":"不可", "mid");
+  html+=badge("IPv6", ipv6?"到達可能の可能性":"不可/不明", "mid");
+  html+=badge("Proxy推定", proxy?"VPN/Proxy の可能性":"なし/不明", "mid");
 
   out.innerHTML=html;
 
   // 改善ポイント
   const tips=[];
-  if(!https) tips.push("HTTPS で開くと SecureContext が有効になり、診断精度が上がる。");
-  if(!doh) tips.push("セキュアDNS（1.1.1.1 など）を設定すると安全性と速度が向上する。");
-  if(!ublock) tips.push("uBlock Origin が無効の可能性。拡張機能設定を確認するとよい。");
-  if(speed && speed<20) tips.push("通信速度が遅め。Wi-Fi なら 5GHz や有線接続を検討できる。");
-  if(!ipv6) tips.push("IPv6 が無効。必須ではないが、対応すると経路が最適化される場合がある。");
-  if(!storage.ls || !storage.ss) tips.push("Storage が無効だとログイン保持が壊れる可能性がある。");
+  if(!https) tips.push("このページを HTTPS で配信すると SecureContext が有効になり、診断精度と安全性が向上します。");
+  if(!doh) tips.push("ブラウザのセキュア DNS を 1.1.1.1 / 8.8.8.8 などに設定すると、DNS レベルの保護と速度が向上します。");
+  if(!ublock) tips.push("uBlock Origin が無効か例外になっている可能性があります。拡張機能と「信頼済みサイト」を確認してください。");
+  if(speed && speed<20) tips.push("通信速度がやや遅めです。大容量ダウンロードやゲーム時は有線接続や別回線も検討できます。");
+  if(!ipv6) tips.push("IPv6 が無効な環境です。必須ではありませんが、有効化すると経路が最適化される場合があります。");
+  if(!storage.ls || !storage.ss) tips.push("LocalStorage / SessionStorage が無効だと、一部サイトのログイン保持や設定保存が動作しない可能性があります。");
+  if(!misc.secureContext) tips.push("SecureContext ではないため、一部のセキュア API が制限されます。HTTPS 環境での利用を推奨します。");
 
   advice.innerHTML = tips.length===0
-    ? "<span class='badge ok'>大きな問題なし。非常に良い状態。</span>"
+    ? "<span class='badge ok'><span class='badge-label'>診断</span><span>大きな問題は見当たりません。かなり整った環境です。</span></span>"
     : "<ul>"+tips.map(t=>"<li>"+t+"</li>").join("")+"</ul>";
 
-  // 拡張機能レコメンド
-  const rec=[];
+  // 拡張機能レコメンド（ブラウザ / OS 切り替え + 疑似インストール判定）
+  const links = getExtensionLinks();
+  const rec = [];
 
-  if(!ublock){
-    rec.push({
-      name:"uBlock Origin",
-      desc:"広告・追跡・詐欺サイトを強力にブロック",
-      url:"https://microsoftedge.microsoft.com/addons/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm"
-    });
-  }
+  // uBlock Origin
+  rec.push({
+    key:"ublock",
+    name:"uBlock Origin",
+    desc:"広告・トラッカー・悪質サイトを強力にブロックする定番コンテンツブロッカー。",
+    url:links.ublock,
+    needed:!ublock,
+    installedGuess:ublock,
+    reason: ublock ? "広告ブロックが機能している可能性が高い環境です。" : "広告ブロックが検出できなかったため、導入を強く推奨します。"
+  });
 
-  if(!doh){
-    rec.push({
-      name:"Malwarebytes Browser Guard",
-      desc:"フィッシング・マルウェアサイトを自動ブロック",
-      url:"https://microsoftedge.microsoft.com/addons/detail/malwarebytes-browser-guar/ihcjicgdanjaechkgeegckofjjedodee"
-    });
-  }
+  // Malwarebytes Browser Guard
+  rec.push({
+    key:"mbg",
+    name:"Malwarebytes Browser Guard",
+    desc:"フィッシング・マルウェア・詐欺サイトをブラウザレベルでブロック。",
+    url:links.mbg,
+    needed:!doh, // DoH 無効なら DNS/URL レベル保護を補完
+    installedGuess:false,
+    reason: doh ? "セキュア DNS が有効なため、DNS レベルの保護はある程度確保されています。" : "セキュア DNS が無効なため、URL レベルの保護を追加すると安全性が向上します。"
+  });
 
-  if(webrtcIPs.length>1){
-    rec.push({
-  name:"WebRTC Leak Prevent",
-  desc:"WebRTC による IP 漏洩を防止",
-  url:"https://microsoftedge.microsoft.com/addons/detail/webrtc-leak-prevent/ejjicmeblgpmajnghnpcppodonldlgfn"
-});
+  // WebRTC Control
+  const webrtcLeak = webrtcIPs.filter(ip=>!/^10\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)).length>0;
+  rec.push({
+    key:"webrtc",
+    name:"WebRTC Control",
+    desc:"WebRTC によるグローバル IP アドレス漏洩を防止します。",
+    url:links.webrtc,
+    needed:webrtcLeak,
+    installedGuess:!webrtcLeak,
+    reason: webrtcLeak ? "WebRTC 経由でプライベート以外の IP が検出されたため、リーク防止拡張の導入を推奨します。" : "WebRTC から明確なグローバル IP は検出されませんでした。"
+  });
 
-  }
+  // Bitwarden
+  rec.push({
+    key:"bitwarden",
+    name:"Bitwarden",
+    desc:"オープンソースのパスワードマネージャー。強力なパスワード生成と自動入力に対応。",
+    url:links.bitwarden,
+    needed:!apis.clip, // かなりラフな疑似判定
+    installedGuess:apis.clip,
+    reason: apis.clip ? "クリップボード API が利用可能なため、パスワードマネージャーとの連携環境は整っている可能性があります。" : "パスワード管理がブラウザ任せの場合、専用マネージャーの導入を推奨します。"
+  });
 
-  if(!apis.clip){
-    rec.push({
-      name:"Bitwarden",
-      desc:"安全なパスワード管理",
-      url:"https://microsoftedge.microsoft.com/addons/detail/bitwarden-free-password-m/nngceckbapebfimnlniiiahkandclblb"
-    });
-  }
+  const osTag = links.os;
+  const brTag = links.browser;
 
-  if(rec.length===0){
-    ext.innerHTML="<span class='badge ok'>追加で必要な拡張機能は特にありません。</span>";
-  }else{
-    ext.innerHTML = rec.map(r=>`
+  const recHtml = rec.map(r=>{
+    const status = r.installedGuess
+      ? "インストール済みの可能性"
+      : (r.needed ? "導入推奨" : "任意");
+    const statusClass = r.installedGuess ? "ok" : (r.needed ? "warn" : "mid");
+    const osNote = (osTag==="Android" || osTag==="iOS")
+      ? "※ 一部拡張機能は PC 版ブラウザ専用です。"
+      : "";
+    return `
       <div class="ext-item">
-        <b>${r.name}</b><br>
-        ${r.desc}<br>
-        <a href="${r.url}" target="_blank">→ 公式ストアで入手</a>
+        <div class="ext-item-header">
+          <div class="ext-name">${r.name}</div>
+          <div class="ext-tag">${brTag} / ${osTag}</div>
+        </div>
+        <div>${r.desc}</div>
+        <div class="pill-row">
+          <span class="pill ${statusClass}">状態推定: ${status}</span>
+          <span class="pill">${r.reason}</span>
+          ${osNote ? `<span class="pill">${osNote}</span>` : ""}
+        </div>
+        <div style="margin-top:4px;">
+          <a href="${r.url}" target="_blank">→ 対応ストアで開く</a>
+        </div>
       </div>
-    `).join("");
-  }
+    `;
+  }).join("");
+
+  document.getElementById("extensions").innerHTML = recHtml;
 
   // 生テキストレポート
   const report = {
+    env: envInfo,
     https,
     ua,
     cpu,
     ram,
     misc,
     webrtcIPs,
-    speed,
+    speedMbps: speed,
     doh,
     ublock,
-    edge,
-    cWebGL,
-    cCanvas,
+    edgeCookieBehavior: edge,
+    webglFP: cWebGL,
+    canvasFP: cCanvas,
     audioFP,
     storage,
     apis,
     ipv6,
-    proxy
+    proxy,
+    recommendations: rec.map(r=>({
+      key:r.key,
+      name:r.name,
+      needed:r.needed,
+      installedGuess:r.installedGuess,
+      url:r.url
+    }))
   };
 
   const textLines = [];
@@ -416,7 +614,6 @@ async function runAll(){
   for(const [k,v] of Object.entries(report)){
     textLines.push(k + ": " + JSON.stringify(v));
   }
-
   const adviceText = tips.length===0 ? "No major issues detected." : tips.map((t,i)=>`${i+1}. ${t}`).join("\n");
   textLines.push("\n=== Advice ===");
   textLines.push(adviceText);
@@ -424,9 +621,12 @@ async function runAll(){
   const finalText = textLines.join("\n");
   raw.textContent = finalText;
   lastReportText = finalText;
-}  // ← runAll() の正しい閉じカッコ（ここで終わり）
 
-// ダウンロード
+  runBtn.disabled = false;
+  runBtn.textContent = "すべて診断する";
+}
+
+// --- レポートダウンロード ---
 function downloadReport(){
   if(!lastReportText){
     alert("先に「すべて診断する」を押してください。");
@@ -448,4 +648,3 @@ function downloadReport(){
 </div>
 </body>
 </html>
-
